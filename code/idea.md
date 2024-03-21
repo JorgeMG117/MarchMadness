@@ -8,4 +8,6 @@
 
 - Get basic wins of the season, and predict who will win based on that, predict for 2023 and see results
 
+Accuracy: 0.71
+
 - Use that year stadistics

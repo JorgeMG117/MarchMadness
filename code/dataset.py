@@ -1,9 +1,9 @@
 
 import pandas as pd
-import pandas as pd
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+import numpy as np
+
+from evaluate import evaluate
+from model import XGBModel
 
 
 DATA_PATH = "march-machine-learning-mania-2024/"
@@ -29,9 +29,10 @@ if __name__ == '__main__':
     season_results = pd.read_csv(season_results_path)
     season_results = season_results[season_results["Season"] == season]
 
-    print(teams.head())
+    #print(teams.head())
 
-    print(season_results.head())
+    #print(season_results.head())
+    #print(season_results.shape)
 
     wins = season_results['WTeamID'].value_counts().reset_index()
     losses = season_results['LTeamID'].value_counts().reset_index()
@@ -53,41 +54,7 @@ if __name__ == '__main__':
     top_5_teams = top_teams.head(5)
 
     # Display the names and win rates of the top 5 teams
-    print(top_5_teams[['TeamName', 'WinRate']])
-
-
-    
-    """
-    # Assuming 'team_stats' is your DataFrame containing TeamID and WinRate
-    # Assuming 'matches' is your DataFrame containing the matchups you want to predict, 
-    # with 'Team1ID' and 'Team2ID' columns for the IDs of the teams in each game
-    # and 'Team1Win' column where 1 indicates Team1 wins, and 0 indicates Team2 wins
-
-    # Merge team_stats to get the win rates for Team1 and Team2 in each game
-    matches = matches.merge(team_stats[['TeamID', 'WinRate']], left_on='Team1ID', right_on='TeamID')
-    matches.rename(columns={'WinRate': 'Team1WinRate'}, inplace=True)
-    matches = matches.merge(team_stats[['TeamID', 'WinRate']], left_on='Team2ID', right_on='TeamID')
-    matches.rename(columns={'WinRate': 'Team2WinRate'}, inplace=True)
-
-    # Prepare features and target
-    features = matches[['Team1WinRate', 'Team2WinRate']]
-    target = matches['Team1Win']
-
-    # Split the data
-    X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
-
-    # Train the XGBoost model
-    model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-    model.fit(X_train, y_train)
-
-    # Predict on the test set
-    predictions = model.predict(X_test)
-
-    # Evaluate the model
-    accuracy = accuracy_score(y_test, predictions)
-    print(f"Accuracy: {accuracy:.2f}")
-
-"""
+    #print(top_5_teams[['TeamName', 'WinRate']])
 
 
     # MNCAATourneyCompactResults
@@ -96,5 +63,49 @@ if __name__ == '__main__':
     tourney_results_path = DATA_PATH + "MNCAATourneyCompactResults.csv"
     tourney_results = pd.read_csv(tourney_results_path)
     tourney_results = tourney_results[tourney_results["Season"] == season]
-    print(tourney_results.head())
+    #print(tourney_results.head())
+    #print(tourney_results.shape)
+    # Get the last games
+    tourney_results_rev = tourney_results.sort_values('DayNum', ascending=False)
+    last_games = tourney_results_rev[:3]
+
+    # Get teams in last_games
+    top_4_teams = last_games['WTeamID'].tolist() + last_games['LTeamID'].tolist()
+
+    # Get the team names
+    top_4_teams = teams[teams['TeamID'].isin(top_4_teams)]
+
+    # Display the top 4 teams
+    print("Top 4 Teams")
+    print(top_4_teams['TeamName'])
+
+
+    # Randomly assign Team1 and Team2
+    np.random.seed(42)  # For reproducibility
+    tourney_results['Random'] = np.random.rand(len(tourney_results))
+    tourney_results['Team1ID'] = np.where(tourney_results['Random'] < 0.5, tourney_results['WTeamID'], tourney_results['LTeamID'])
+    tourney_results['Team2ID'] = np.where(tourney_results['Random'] >= 0.5, tourney_results['WTeamID'], tourney_results['LTeamID'])
+    tourney_results['Team1Win'] = (tourney_results['Team1ID'] == tourney_results['WTeamID']).astype(int)
+
+    # Merge team_stats to get the win rates for Team1 and Team2
+    tourney_results = tourney_results.merge(team_stats[['TeamID', 'WinRate']], left_on='Team1ID', right_on='TeamID', how='left')
+    tourney_results.rename(columns={'WinRate': 'Team1WinRate'}, inplace=True)
+    tourney_results = tourney_results.merge(team_stats[['TeamID', 'WinRate']], left_on='Team2ID', right_on='TeamID', how='left')
+    tourney_results.rename(columns={'WinRate': 'Team2WinRate'}, inplace=True)
+
+    # Prepare features and target
+    features = tourney_results[['Team1WinRate', 'Team2WinRate']]
+    target = tourney_results['Team1Win']
+
     print(tourney_results.shape)
+    print(target.shape)
+
+
+    predictions, y_test = XGBModel(features, target)
+
+
+    # Get top 4 finalists, get 4 teams with most predicted winrate wins/games_played
+    #top_4_teams =
+
+    # Evaluate the model
+    evaluate(predictions, y_test)
