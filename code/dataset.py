@@ -2,9 +2,6 @@
 import pandas as pd
 import numpy as np
 
-from evaluate import evaluate
-from model import XGBModel
-
 
 DATA_PATH = "march-machine-learning-mania-2024/"
 
@@ -13,62 +10,111 @@ class NCAADataset():
         # Teams
         self.teams = pd.read_csv(DATA_PATH + "MTeams.csv")
 
-        # Regular Season Results
-        season = 2023
-        self.season_results = self._season_results(season)
+        # Seeds
+        self.seeds = pd.read_csv(DATA_PATH + "MNCAATourneySeeds.csv")
+        #print(self.seeds.head())
 
-        # Regular Season Team Stats
-        self.team_stats = self._team_stats(self.season_results)
+        # Regular Season Data
+        self.season_results = self._prepare_data(DATA_PATH + "MRegularSeasonDetailedResults.csv")
+        #print(self.season_results.columns)
+        #print(self.season_results.head())
+        #print(self.season_results.shape)
 
-
-        # Create X_train, y_train
-        np.random.seed(42)  # For reproducibility
-        train_data = self.season_results[['WTeamID', 'LTeamID']].copy()
-        train_data['Random'] = np.random.rand(len(train_data))
-        train_data['Team1ID'] = np.where(train_data['Random'] < 0.5, train_data['WTeamID'], train_data['LTeamID'])
-        train_data['Team2ID'] = np.where(train_data['Random'] >= 0.5, train_data['WTeamID'], train_data['LTeamID'])
-        train_data['Team1Win'] = (train_data['Team1ID'] == train_data['WTeamID']).astype(int)
-
-        # Merge team_stats to get the win rates for Team1 and Team2
-        train_data = train_data.merge(self.team_stats[['TeamID', 'WinRate']], left_on='Team1ID', right_on='TeamID', how='left')
-        train_data.rename(columns={'WinRate': 'Team1WinRate'}, inplace=True)
-        train_data = train_data.merge(self.team_stats[['TeamID', 'WinRate']], left_on='Team2ID', right_on='TeamID', how='left')
-        train_data.rename(columns={'WinRate': 'Team2WinRate'}, inplace=True)
-
-        self.X_train = train_data[['Team1WinRate', 'Team2WinRate']]
-        self.y_train = train_data['Team1Win']
+        # Tournament Data
+        self.tournament_results = self._prepare_data(DATA_PATH + "MNCAATourneyDetailedResults.csv")
+        #print(self.tournament_results.head())
+        #print(self.tournament_results.shape)
 
 
-        # Test Data
-        self.tournament_results = self._tournament_results(season)
+        # Feature Engineering
+        self.tournament_data = self._feature_engineering(self.season_results, self.tournament_results, self.seeds)
 
-        # Create X_test, y_test
-        test_data = self.tournament_results[['WTeamID', 'LTeamID']].copy()
-        test_data = test_data.merge(self.team_stats[['TeamID', 'WinRate']], left_on='WTeamID', right_on='TeamID', how='left')
-        test_data.rename(columns={'WinRate': 'Team1WinRate'}, inplace=True)
-        test_data = test_data.merge(self.team_stats[['TeamID', 'WinRate']], left_on='LTeamID', right_on='TeamID', how='left')
-        test_data.rename(columns={'WinRate': 'Team2WinRate'}, inplace=True)
-
-        self.X_test = test_data[['Team1WinRate', 'Team2WinRate']]
-        self.y_test = np.ones(len(test_data))
+        # 2024 Tournament Games
+        self.tournament_2024 = pd.read_csv(DATA_PATH + "2024_tourney_seeds.csv")
 
 
-    def _tournament_results(self, season):
-        tourney_results_path = DATA_PATH + "MNCAATourneyCompactResults.csv"
+        
 
-        tourney_results = pd.read_csv(tourney_results_path)
-        tourney_results = tourney_results[tourney_results["Season"] == season]
+    def _prepare_data(self, path):
+        season_results = pd.read_csv(path)
+        
+        # Swap contains the same data as season_results, but with the winning and losing teams swapped
+        season_results_swap = season_results.copy()
 
-        return tourney_results
+        season_results_swap.loc[season_results['WLoc'] == 'H', 'WLoc'] = 'A'
+        season_results_swap.loc[season_results['WLoc'] == 'A', 'WLoc'] = 'H'
+        season_results.columns.values[6] = 'location'
+        season_results_swap.columns.values[6] = 'location'
 
-    def _season_results(self, season):
-        season_results_path = DATA_PATH + "MRegularSeasonCompactResults.csv"
+        season_results.columns = [x.replace('W','T1_').replace('L','T2_') for x in list(season_results.columns)]
+        season_results_swap.columns = [x.replace('L','T1_').replace('W','T2_') for x in list(season_results_swap.columns)]
 
-        season_results = pd.read_csv(season_results_path)
-        season_results = season_results[season_results["Season"] == season]
+        # Order columns to follow same structure
+        season_results_swap = season_results_swap[season_results.columns]
+
+
+        # Mix them together
+        season_results = pd.concat([season_results, season_results_swap]).sort_index().reset_index(drop = True)
+
+        season_results.loc[season_results.location=='N','location'] = '0'
+        season_results.loc[season_results.location=='H','location'] = '1'
+        season_results.loc[season_results.location=='A','location'] = '-1'
+        season_results.location = season_results.location.astype(int)
+
+        season_results['PointDiff'] = season_results['T1_Score'] - season_results['T2_Score']
+
+        #print(season_results.head())
+
+        #season_statistics = regular_data.groupby(["Season", 'T1_TeamID'])[boxscore_cols].agg(np.mean)
+        #season_statistics.head()
 
         return season_results
     
+
+    def _feature_engineering(self, season_results, tournament_results, seeds):
+        # Group each team stats by season
+        team_prefixes = ['T1_', 'T2_']
+        metrics = ['FGM', 'FGA', 'FGM3', 'FGA3', 'FTM', 'FTA', 'OR', 'DR', 'Ast', 'TO', 'Stl', 'Blk', 'PF']
+        boxscore_cols = [f"{prefix}{metric}" for prefix in team_prefixes for metric in metrics] + ['PointDiff']
+
+        season_statistics = season_results.groupby(["Season", 'T1_TeamID'])[boxscore_cols].agg('mean').reset_index()
+
+
+        # Duplicate season_statistics for T1 and T2
+        season_statistics_T1 = season_statistics.copy()
+        season_statistics_T2 = season_statistics.copy()
+
+        season_statistics_T1.columns = ["T1_" + x.replace("T1_","").replace("T2_","opponent_") for x in list(season_statistics_T1.columns)]
+        season_statistics_T2.columns = ["T2_" + x.replace("T1_","").replace("T2_","opponent_") for x in list(season_statistics_T2.columns)]
+        season_statistics_T1.columns.values[0] = "Season"
+        season_statistics_T2.columns.values[0] = "Season"
+
+
+        # Add season statistics to tournament games
+        tournament_results = tournament_results[['Season', 'DayNum', 'T1_TeamID', 'T1_Score', 'T2_TeamID' ,'T2_Score']]# TODO POdemos utilizar T2Score y T1Score????
+
+        tournament_results = pd.merge(tournament_results, season_statistics_T1, on = ['Season', 'T1_TeamID'], how = 'left')
+        tournament_results = pd.merge(tournament_results, season_statistics_T2, on = ['Season', 'T2_TeamID'], how = 'left')
+
+
+        # Add seed difference
+        seeds['seed'] = seeds['Seed'].apply(lambda x: int(x[1:3]))
+
+        seeds_T1 = seeds[['Season','TeamID','seed']].copy()
+        seeds_T2 = seeds[['Season','TeamID','seed']].copy()
+        seeds_T1.columns = ['Season','T1_TeamID','T1_seed']
+        seeds_T2.columns = ['Season','T2_TeamID','T2_seed']
+
+        tournament_results = pd.merge(tournament_results, seeds_T1, on = ['Season', 'T1_TeamID'], how = 'left')
+        tournament_results = pd.merge(tournament_results, seeds_T2, on = ['Season', 'T2_TeamID'], how = 'left')
+
+        tournament_results["Seed_diff"] = tournament_results["T1_seed"] - tournament_results["T2_seed"]
+
+
+
+        return tournament_results
+
+
     def _team_stats(self, season_results):
         wins = season_results['WTeamID'].value_counts().reset_index()
         losses = season_results['LTeamID'].value_counts().reset_index()
@@ -98,23 +144,26 @@ class NCAADataset():
 if __name__ == '__main__':
 
     dataset = NCAADataset()
-    season = 2023
     
-    print("Teams")
-    print(dataset.teams.head())
+    #print("Teams")
+    #print(dataset.teams.head())
 
-    print("Season Results")
-    print(dataset.season_results.head())
-    print(dataset.season_results.shape)
-
-
-    print("Team Stats")
-    print(dataset.team_stats.head())
+    #print("Season Results")
+    #print(dataset.season_results.head())
+    #print(dataset.season_results.shape)
 
 
-    print("Tournament Results")
-    print(dataset.tournament_results.head())
-    print(dataset.tournament_results.shape)
+    #print("Team Stats")
+    #print(dataset.team_stats.head())
+
+
+    #print("Tournament Results")
+    #print(dataset.tournament_results.head())
+    #print(dataset.tournament_results.shape)
+
+    print("Tournament Data")
+    print(dataset.tournament_data.head())
+    print(dataset.tournament_data.shape)
 
     """
     # Get the last games
