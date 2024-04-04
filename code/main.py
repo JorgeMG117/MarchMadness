@@ -1,9 +1,9 @@
 from dataset import NCAADataset
-from model import XGBModel
+from model import XGBPredictor
 from evaluate import evaluate
 import numpy as np
 import pandas as pd
-from model import predict_matchup
+
 
 def create_matchups(df):
     # Specifying the order for a playoff structure
@@ -134,14 +134,18 @@ def main():
 
 
     #predictions = XGBModel(dataset.X_train, dataset.y_train, dataset.X_test)
-    predictions, y_test = XGBModel(X, y)
+    #predictions, y_test = XGBModel(X, y)
+    xgb = XGBPredictor()
+
+    xgb.train_model(X, y)
+    
 
     # Get top 4 finalists, get 4 teams with most predicted winrate wins/games_played
     #top_4_teams =
 
     # Evaluate the model
 
-    evaluate(predictions, y_test)
+    #evaluate(predictions, y_test)
 
 
     # Simulate 2024 bracket
