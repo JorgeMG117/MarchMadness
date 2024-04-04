@@ -33,6 +33,16 @@ class NCAADataset():
         self.tournament_2024 = pd.read_csv(DATA_PATH + "2024_tourney_seeds.csv")
 
 
+    def expand_matchup(self, matchup):
+        matchup = pd.merge(matchup, self.season_statistics_T1, on = ['Season', 'T1_TeamID'], how = 'left')
+        matchup = pd.merge(matchup, self.season_statistics_T2, on = ['Season', 'T2_TeamID'], how = 'left')
+
+        matchup = pd.merge(matchup, self.seeds_T1, on = ['Season', 'T1_TeamID'], how = 'left')
+        matchup = pd.merge(matchup, self.seeds_T2, on = ['Season', 'T2_TeamID'], how = 'left')
+
+        matchup["Seed_diff"] = matchup["T1_seed"] - matchup["T2_seed"]
+
+        return matchup
         
 
     def _prepare_data(self, path):
@@ -111,6 +121,11 @@ class NCAADataset():
         tournament_results["Seed_diff"] = tournament_results["T1_seed"] - tournament_results["T2_seed"]
 
 
+        # To use it for the 2024 playoffs
+        self.seeds_T1 = seeds_T1
+        self.seeds_T2 = seeds_T2
+        self.season_statistics_T1 = season_statistics_T1
+        self.season_statistics_T2 = season_statistics_T2
 
         return tournament_results
 
