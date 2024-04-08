@@ -15,7 +15,7 @@ def create_matchups(df):
     return ordered_df
 
 
-def simulate_matchups(df, expand_matchup):
+def simulate_matchups(df, expand_matchup, predict_matchup):
     #print(df.head())
     winners = []
     for i in range(0, len(df), 2):
@@ -34,9 +34,11 @@ def simulate_matchups(df, expand_matchup):
         #print(merged_df.shape)
         
         # Predict winner
-        winner = team1 if np.random.rand() > 0.5 else team2
-        winners.append(winner)
-        #predict_matchup(merged_df, model)
+        #winner = team1 if np.random.rand() > 0.5 else team2
+        #winners.append(winner)
+        winner = predict_matchup(merged_df)
+        winners.append(team1 if winner == 1 else team2)
+        print(f"Winner: {winners[-1]['TeamName']}\n")
 
         #print(f"Winner: {winner['TeamName']}\n")
 
@@ -44,7 +46,7 @@ def simulate_matchups(df, expand_matchup):
     return winners_df
 
 
-def simulate_bracket(bracket_data, expand_matchup):
+def simulate_bracket(bracket_data, expand_matchup, predict_matchup):
     # W/X/Y/Z are East,Midwest,South,West. TODO Ojo con esto, creo que esta mal
 
     # Order vector so that it follows the bracket structure
@@ -56,53 +58,53 @@ def simulate_bracket(bracket_data, expand_matchup):
 
     print("### First round ###\n")
     print("# East #")
-    matchups_w = simulate_matchups(matchups_w, expand_matchup)
+    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup)
     print("# Midwest #")
-    matchups_x = simulate_matchups(matchups_x, expand_matchup)
+    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup)
     print("# South #")
-    matchups_y = simulate_matchups(matchups_y, expand_matchup)
+    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup)
     print("# West #")
-    matchups_z = simulate_matchups(matchups_z, expand_matchup)
+    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup)
 
     
     print("### Second round ###")
     print("# East #")
-    matchups_w = simulate_matchups(matchups_w, expand_matchup)
+    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup)
     print("# Midwest #")
-    matchups_x = simulate_matchups(matchups_x, expand_matchup)
+    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup)
     print("# South #")
-    matchups_y = simulate_matchups(matchups_y, expand_matchup)
+    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup)
     print("# West #")
-    matchups_z = simulate_matchups(matchups_z, expand_matchup)
+    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup)
 
     print("### Sweet 16 ###")
     print("# East #")
-    matchups_w = simulate_matchups(matchups_w, expand_matchup)
+    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup)
     print("# Midwest #")
-    matchups_x = simulate_matchups(matchups_x, expand_matchup)
+    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup)
     print("# South #")
-    matchups_y = simulate_matchups(matchups_y, expand_matchup)
+    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup)
     print("# West #")
-    matchups_z = simulate_matchups(matchups_z, expand_matchup)
+    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup)
     
 
     print("### Elite 8 ###")
     print("# East #")
-    winner_w = simulate_matchups(matchups_w, expand_matchup)
+    winner_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup)
     print("# Midwest #")
-    winner_x = simulate_matchups(matchups_x, expand_matchup)
+    winner_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup)
     print("# South #")
-    winner_y = simulate_matchups(matchups_y, expand_matchup)
+    winner_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup)
     print("# West #")
-    winner_z = simulate_matchups(matchups_z, expand_matchup)
+    winner_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup)
 
 
     print("### Final Four ###")
     matchups = pd.concat([winner_w, winner_x, winner_y, winner_z], ignore_index=True)
-    matchups = simulate_matchups(matchups, expand_matchup)
+    matchups = simulate_matchups(matchups, expand_matchup, predict_matchup)
 
     print("### Championship ###")
-    winner = simulate_matchups(matchups, expand_matchup)
+    winner = simulate_matchups(matchups, expand_matchup, predict_matchup)
 
 
     print("### Champion ###")
@@ -128,8 +130,8 @@ def main():
     #print(y.shape)
     
     X = dataset.tournament_data[dataset.tournament_data.columns[6:]]
-    print(X.head())
-    print(X.shape)
+    #print(X.head())
+    print("Shape of X: " + str(X.shape))
 
 
 
@@ -149,12 +151,15 @@ def main():
 
 
     # Simulate 2024 bracket
+    print("### 2024 BRACKET ###")
     bracket_data = dataset.tournament_2024[dataset.tournament_2024['Tournament'] == 'M']
     bracket_data = bracket_data.merge(dataset.teams, on='TeamID', how='inner')
     bracket_data = bracket_data[['Seed', 'TeamName', 'TeamID']]
     #print(bracket_data.head())
 
-    simulate_bracket(bracket_data, dataset.expand_matchup)
+    simulate_bracket(bracket_data, dataset.expand_matchup, xgb.predict_matchup)
+
+    # Evaluate predictions with the actual results
 
     #dataset.tournament_2024 = dataset.tournament_2024[]
 

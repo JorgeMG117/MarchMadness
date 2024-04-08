@@ -29,7 +29,7 @@ class XGBPredictor:
         return grad, hess
 
     def train_model(self, X, y):
-        dtrain = xgb.DMatrix(X, label=y)
+        dtrain = xgb.DMatrix(X.values, label=y)
         xgb_cv = []
 
         for i in range(self.repeat_cv):
@@ -47,51 +47,33 @@ class XGBPredictor:
             )
 
         self.iteration_counts = [np.argmin(x['test-mae-mean'].values) for x in xgb_cv]
+        print("Repeat CV result: ", self.iteration_counts)
+        val_mae = [np.min(x['test-mae-mean'].values) for x in xgb_cv]
+        print("Validation MAE: ", val_mae)
         self.dtrain = dtrain
+        #print(xgb_cv)
 
-        oof_preds = []
-        for i in range(self.repeat_cv):
-            print(f"Fold repeater {i}")
-            preds = np.zeros_like(y, dtype=float)
-            kfold = KFold(n_splits=5, shuffle=True, random_state=i)
-            for train_index, val_index in kfold.split(X, y):
-                dtrain_i = xgb.DMatrix(X.iloc[train_index], label=y.iloc[train_index])
-                dval_i = xgb.DMatrix(X.iloc[val_index], label=y.iloc[val_index])
-                model = xgb.train(
-                    params=self.param,
-                    dtrain=dtrain_i,
-                    num_boost_round=self.iteration_counts[i],
-                    verbose_eval=50
-                )
-                preds[val_index] = model.predict(dval_i)
+        # Train final model on the entire dataset
+        num_boost_round = int(np.mean(self.iteration_counts))
+        print(f"num_boost_rounds={num_boost_round}")
+        self.final_model = xgb.train(params=self.param, dtrain=dtrain, num_boost_round=num_boost_round)
 
-            oof_preds.append(np.clip(preds, -30, 30))
-        self.oof_preds = oof_preds
-        return oof_preds
+        
 
 
-    def predict_matchup(self, Xsub, sub):
-        dtest = xgb.DMatrix(Xsub)
-        sub_models = []
-
-        for i in range(self.repeat_cv):
-            print(f"Fold repeater {i}")
-            sub_models.append(
-                xgb.train(
-                    params=self.param,
-                    dtrain=self.dtrain,
-                    num_boost_round=int(self.iteration_counts[i] * 1.05),
-                    verbose_eval=50
-                )
-            )
-
+    def predict_matchup(self, matchup):
+        dtest = xgb.DMatrix(matchup.values)
+        
         sub_preds = []
-        for model in sub_models:
+        for model in self.final_model:
             sub_preds.append(model.predict(dtest))
 
-        # Assuming 'spline_model' and further processing to apply here, update accordingly
-        sub["Pred"] = pd.DataFrame(sub_preds).mean(axis=0)
-        sub[['ID', 'Pred']].to_csv("submission.csv", index=None)
+        if pd.DataFrame(sub_preds).mean(axis=0).item() > 0.5:
+            return True
+        else:
+            return False
+        #sub["Pred"] = pd.DataFrame(sub_preds).mean(axis=0)
+        #sub[['ID', 'Pred']].to_csv("submission.csv", index=None)
 
     @staticmethod
     def visualize_performance(oof_preds, y):
