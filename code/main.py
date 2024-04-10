@@ -1,6 +1,7 @@
 from dataset import NCAADataset
 from model import XGBPredictor
 from evaluate import evaluate
+from evaluate import compare_bracket
 import numpy as np
 import pandas as pd
 
@@ -15,7 +16,7 @@ def create_matchups(df):
     return ordered_df
 
 
-def simulate_matchups(df, expand_matchup, predict_matchup):
+def simulate_matchups(df, expand_matchup, predict_matchup, predictions):
     #print(df.head())
     winners = []
     for i in range(0, len(df), 2):
@@ -34,19 +35,23 @@ def simulate_matchups(df, expand_matchup, predict_matchup):
         #print(merged_df.shape)
         
         # Predict winner
-        #winner = team1 if np.random.rand() > 0.5 else team2
-        #winners.append(winner)
         winner = predict_matchup(merged_df)
-        winners.append(team1 if winner == 1 else team2)
-        print(f"Winner: {winners[-1]['TeamName']}\n")
+        if winner:
+            winner_team = team1
+        else:
+            winner_team = team2
 
-        #print(f"Winner: {winner['TeamName']}\n")
+        # Increment win count in predictions
+        predictions[winner_team['TeamID']] = predictions.get(winner_team['TeamID'], 0) + 1
+
+        winners.append(winner_team)
+        print(f"Winner: {winners[-1]['TeamName']}\n")
 
     winners_df = pd.DataFrame(winners).reset_index(drop=True)
     return winners_df
 
 
-def simulate_bracket(bracket_data, expand_matchup, predict_matchup):
+def simulate_bracket(bracket_data, expand_matchup, predict_matchup, predictions):
     # W/X/Y/Z are East,Midwest,South,West. TODO Ojo con esto, creo que esta mal
 
     # Order vector so that it follows the bracket structure
@@ -58,53 +63,53 @@ def simulate_bracket(bracket_data, expand_matchup, predict_matchup):
 
     print("### First round ###\n")
     print("# East #")
-    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup)
-    print("# Midwest #")
-    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup)
-    print("# South #")
-    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup)
+    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup, predictions)
     print("# West #")
-    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup)
-
+    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup, predictions)
+    print("# South #")
+    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup, predictions)
+    print("# Midwest #")
+    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup, predictions)
+    
     
     print("### Second round ###")
     print("# East #")
-    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup)
-    print("# Midwest #")
-    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup)
-    print("# South #")
-    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup)
+    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup, predictions)
     print("# West #")
-    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup)
-
+    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup, predictions)
+    print("# South #")
+    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup, predictions)
+    print("# Midwest #")
+    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup, predictions)
+    
     print("### Sweet 16 ###")
     print("# East #")
-    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup)
-    print("# Midwest #")
-    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup)
-    print("# South #")
-    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup)
+    matchups_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup, predictions)
     print("# West #")
-    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup)
+    matchups_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup, predictions)
+    print("# South #")
+    matchups_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup, predictions)
+    print("# Midwest #")
+    matchups_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup, predictions)
     
 
     print("### Elite 8 ###")
     print("# East #")
-    winner_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup)
-    print("# Midwest #")
-    winner_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup)
-    print("# South #")
-    winner_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup)
+    winner_w = simulate_matchups(matchups_w, expand_matchup, predict_matchup, predictions)
     print("# West #")
-    winner_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup)
-
+    winner_x = simulate_matchups(matchups_x, expand_matchup, predict_matchup, predictions)
+    print("# South #")
+    winner_z = simulate_matchups(matchups_z, expand_matchup, predict_matchup, predictions)
+    print("# Midwest #")
+    winner_y = simulate_matchups(matchups_y, expand_matchup, predict_matchup, predictions)
+    
 
     print("### Final Four ###")
-    matchups = pd.concat([winner_w, winner_x, winner_y, winner_z], ignore_index=True)
-    matchups = simulate_matchups(matchups, expand_matchup, predict_matchup)
+    matchups = pd.concat([winner_w, winner_x, winner_z, winner_y], ignore_index=True)
+    matchups = simulate_matchups(matchups, expand_matchup, predict_matchup, predictions)
 
     print("### Championship ###")
-    winner = simulate_matchups(matchups, expand_matchup, predict_matchup)
+    winner = simulate_matchups(matchups, expand_matchup, predict_matchup, predictions)
 
 
     print("### Champion ###")
@@ -157,9 +162,11 @@ def main():
     bracket_data = bracket_data[['Seed', 'TeamName', 'TeamID']]
     #print(bracket_data.head())
 
-    simulate_bracket(bracket_data, dataset.expand_matchup, xgb.predict_matchup)
+    predictions = {}
+    simulate_bracket(bracket_data, dataset.expand_matchup, xgb.predict_matchup, predictions)
 
     # Evaluate predictions with the actual results
+    compare_bracket(predictions)
 
     #dataset.tournament_2024 = dataset.tournament_2024[]
 
