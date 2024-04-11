@@ -38,11 +38,14 @@ def simulate_matchups(df, expand_matchup, predict_matchup, predictions):
         winner = predict_matchup(merged_df)
         if winner:
             winner_team = team1
+            loser_team = team2
         else:
             winner_team = team2
+            loser_team = team1
 
         # Increment win count in predictions
         predictions[winner_team['TeamID']] = predictions.get(winner_team['TeamID'], 0) + 1
+        predictions[loser_team['TeamID']] = predictions.get(loser_team['TeamID'], 0)
 
         winners.append(winner_team)
         print(f"Winner: {winners[-1]['TeamName']}\n")
