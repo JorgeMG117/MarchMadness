@@ -1,7 +1,7 @@
 
 import pandas as pd
 import numpy as np
-
+import statsmodels.api as sm
 
 DATA_PATH = "march-machine-learning-mania-2024/"
 
@@ -107,6 +107,35 @@ class NCAADataset():
         tournament_results = pd.merge(tournament_results, season_statistics_T2, on = ['Season', 'T2_TeamID'], how = 'left')
 
 
+        """
+        # Add last 14 days
+        last14days_stats_T1 = season_results.loc[season_results.DayNum>118].reset_index(drop=True)
+        last14days_stats_T1['win'] = np.where(last14days_stats_T1['PointDiff']>0,1,0)
+        last14days_stats_T1 = last14days_stats_T1.groupby(['Season','T1_TeamID'])['win'].mean().reset_index(name='T1_win_ratio_14d')
+
+        last14days_stats_T2 = season_results.loc[season_results.DayNum>118].reset_index(drop=True)
+        last14days_stats_T2['win'] = np.where(last14days_stats_T2['PointDiff']<0,1,0)
+        last14days_stats_T2 = last14days_stats_T2.groupby(['Season','T2_TeamID'])['win'].mean().reset_index(name='T2_win_ratio_14d')
+
+        tournament_results = pd.merge(tournament_results, last14days_stats_T1, on = ['Season', 'T1_TeamID'], how = 'left')
+        tournament_results = pd.merge(tournament_results, last14days_stats_T2, on = ['Season', 'T2_TeamID'], how = 'left')
+        """
+
+        """
+        # Add team quality
+        glm_quality = self._compute_team_quality(season_results, seeds)
+
+        print(glm_quality.head())
+
+        glm_quality_T1 = glm_quality.copy()
+        glm_quality_T2 = glm_quality.copy()
+        glm_quality_T1.columns = ['T1_TeamID','T1_quality','Season']
+        glm_quality_T2.columns = ['T2_TeamID','T2_quality','Season']
+
+        tournament_results = pd.merge(tournament_results, glm_quality_T1, on = ['Season', 'T1_TeamID'], how = 'left')
+        tournament_results = pd.merge(tournament_results, glm_quality_T2, on = ['Season', 'T2_TeamID'], how = 'left')
+        """
+
         # Add seed difference
         seeds['seed'] = seeds['Seed'].apply(lambda x: int(x[1:3]))
 
@@ -130,30 +159,55 @@ class NCAADataset():
         return tournament_results
 
 
-    def _team_stats(self, season_results):
-        wins = season_results['WTeamID'].value_counts().reset_index()
-        losses = season_results['LTeamID'].value_counts().reset_index()
+    def _compute_team_quality(self, season_results, seeds):
+        regular_season_effects = season_results[['Season','T1_TeamID','T2_TeamID','PointDiff']].copy()
+        regular_season_effects['T1_TeamID'] = regular_season_effects['T1_TeamID'].astype(str)
+        regular_season_effects['T2_TeamID'] = regular_season_effects['T2_TeamID'].astype(str)
+        regular_season_effects['win'] = np.where(regular_season_effects['PointDiff']>0,1,0)
+        march_madness = pd.merge(seeds[['Season','TeamID']],seeds[['Season','TeamID']],on='Season')
+        march_madness.columns = ['Season', 'T1_TeamID', 'T2_TeamID']
+        march_madness.T1_TeamID = march_madness.T1_TeamID.astype(str)
+        march_madness.T2_TeamID = march_madness.T2_TeamID.astype(str)
+        regular_season_effects = pd.merge(regular_season_effects, march_madness, on = ['Season','T1_TeamID','T2_TeamID'])
 
-        # Rename columns for clarity
-        wins.columns = ['TeamID', 'Wins']
-        losses.columns = ['TeamID', 'Losses']
+        glm_quality = pd.concat([self._team_quality(regular_season_effects, 2010),
+                         self._team_quality(regular_season_effects, 2011),
+                         self._team_quality(regular_season_effects, 2012),
+                         self._team_quality(regular_season_effects, 2013),
+                         self._team_quality(regular_season_effects, 2014),
+                         self._team_quality(regular_season_effects, 2015),
+                         self._team_quality(regular_season_effects, 2016),
+                         self._team_quality(regular_season_effects, 2017),
+                         self._team_quality(regular_season_effects, 2018),
+                         self._team_quality(regular_season_effects, 2019),
+                         ##self._team_quality(regular_season_effects, 2020),
+                         self._team_quality(regular_season_effects, 2021),
+                         self._team_quality(regular_season_effects, 2022),
+                         self._team_quality(regular_season_effects, 2023)
+                         ]).reset_index(drop=True)
+        
+        return glm_quality
+        
 
-        # Merge wins and losses DataFrames on TeamID
-        team_stats = pd.merge(wins, losses, on='TeamID', how='outer').fillna(0)
 
-        # Calculate win rate
-        team_stats['WinRate'] = team_stats['Wins'] / (team_stats['Wins'] + team_stats['Losses'])
+    def _team_quality(self, regular_season_effects, season):
+        formula = 'win~-1+T1_TeamID+T2_TeamID'
 
-        #team_stats_sorted = team_stats.sort_values(by='WinRate', ascending=False)
+        data_season = regular_season_effects.loc[regular_season_effects['Season'] == season].copy()
+        #data_season.loc[:, 'PointDiff'] = np.clip(data_season['PointDiff'], -10, 10)  # clipping extreme values
 
-        #top_teams = pd.merge(team_stats_sorted, teams, left_on='TeamID', right_on='TeamID')
+        glm = sm.GLM.from_formula(formula=formula, 
+                                data=data_season, 
+                                family=sm.families.Binomial()).fit()
+        
+        quality = pd.DataFrame(glm.params).reset_index()
+        quality.columns = ['TeamID','quality']
+        quality['Season'] = season
+        #quality['quality'] = np.exp(quality['quality'])
+        quality = quality.loc[quality.TeamID.str.contains('T1_')].reset_index(drop=True)
+        quality['TeamID'] = quality['TeamID'].apply(lambda x: x[10:14]).astype(int)
+        return quality
 
-        #top_5_teams = top_teams.head(5)
-
-        # Display the names and win rates of the top 5 teams
-        #print(top_5_teams[['TeamName', 'WinRate']])
-
-        return team_stats
 
 
 if __name__ == '__main__':

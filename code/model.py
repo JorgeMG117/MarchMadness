@@ -8,7 +8,17 @@ from scipy.interpolate import UnivariateSpline
 
 
 class XGBPredictor:
-    def __init__(self):
+    def __init__(self, data):
+        self.data = data
+        self.y = data['T1_Score'] - data['T2_Score']
+        #y = np.where(y > 0, 1, 0)
+        #print(y.head())
+        #print(y.shape)
+
+        self.X = data[data.columns[6:]]
+        #print(X.head())
+        #print("Shape of X: " + str(X.shape))
+
         self.param = {
             'eval_metric': 'mae',
             'booster': 'gbtree',
@@ -31,7 +41,10 @@ class XGBPredictor:
         hess = -c**2*(x**2-c**2)/(x**2+c**2)**2
         return grad, hess
 
-    def train_model(self, X, y):
+    def train_model(self):
+        X = self.X
+        y = self.y
+
         dtrain = xgb.DMatrix(X.values, label=y)
         xgb_cv = []
 
@@ -91,22 +104,25 @@ class XGBPredictor:
             spline_model.append(UnivariateSpline(list(datdict.keys()), list(datdict.values())))
             spline_fit = spline_model[i](oof_preds[i])
             spline_fit = np.clip(spline_fit,0.025,0.975)
-            """
-            spline_fit[(tourney_data.T1_seed==1) & (tourney_data.T2_seed==16) & (tourney_data.T1_Score > tourney_data.T2_Score)] = 1.0
-            spline_fit[(tourney_data.T1_seed==2) & (tourney_data.T2_seed==15) & (tourney_data.T1_Score > tourney_data.T2_Score)] = 1.0
-            spline_fit[(tourney_data.T1_seed==3) & (tourney_data.T2_seed==14) & (tourney_data.T1_Score > tourney_data.T2_Score)] = 1.0
-            spline_fit[(tourney_data.T1_seed==4) & (tourney_data.T2_seed==13) & (tourney_data.T1_Score > tourney_data.T2_Score)] = 1.0
-            spline_fit[(tourney_data.T1_seed==16) & (tourney_data.T2_seed==1) & (tourney_data.T1_Score < tourney_data.T2_Score)] = 0.0
-            spline_fit[(tourney_data.T1_seed==15) & (tourney_data.T2_seed==2) & (tourney_data.T1_Score < tourney_data.T2_Score)] = 0.0
-            spline_fit[(tourney_data.T1_seed==14) & (tourney_data.T2_seed==3) & (tourney_data.T1_Score < tourney_data.T2_Score)] = 0.0
-            spline_fit[(tourney_data.T1_seed==13) & (tourney_data.T2_seed==4) & (tourney_data.T1_Score < tourney_data.T2_Score)] = 0.0
-            """
-            #val_cv.append(pd.DataFrame({"y":np.where(y>0,1,0), "pred":spline_fit, "season":tourney_data.Season}))
-            print(f"adjusted logloss of cvsplit {i}: {log_loss(np.where(y>0,1,0),spline_fit)}") 
+
             
-        #val_cv = pd.concat(val_cv)
-        #val_cv.groupby('season').apply(lambda x: log_loss(x.y, x.pred))
-        #print(val_cv)
+            spline_fit[(self.data.T1_seed==1) & (self.data.T2_seed==16) & (self.data.T1_Score > self.data.T2_Score)] = 1.0
+            spline_fit[(self.data.T1_seed==2) & (self.data.T2_seed==15) & (self.data.T1_Score > self.data.T2_Score)] = 1.0
+            spline_fit[(self.data.T1_seed==3) & (self.data.T2_seed==14) & (self.data.T1_Score > self.data.T2_Score)] = 1.0
+            spline_fit[(self.data.T1_seed==4) & (self.data.T2_seed==13) & (self.data.T1_Score > self.data.T2_Score)] = 1.0
+            spline_fit[(self.data.T1_seed==16) & (self.data.T2_seed==1) & (self.data.T1_Score < self.data.T2_Score)] = 0.0
+            spline_fit[(self.data.T1_seed==15) & (self.data.T2_seed==2) & (self.data.T1_Score < self.data.T2_Score)] = 0.0
+            spline_fit[(self.data.T1_seed==14) & (self.data.T2_seed==3) & (self.data.T1_Score < self.data.T2_Score)] = 0.0
+            spline_fit[(self.data.T1_seed==13) & (self.data.T2_seed==4) & (self.data.T1_Score < self.data.T2_Score)] = 0.0
+            
+
+            val_cv.append(pd.DataFrame({"y":np.where(y>0,1,0), "pred":spline_fit, "season":self.data.Season}))
+            print(f"adjusted logloss of cvsplit {i}: {log_loss(np.where(y>0,1,0),spline_fit)}") 
+  
+        val_cv = pd.concat(val_cv)
+        val_cv = val_cv.groupby('season').apply(lambda x: log_loss(x.y, x.pred))
+        print(val_cv)
+       
 
         plot_df = pd.DataFrame({"pred":oof_preds[0], "label":np.where(y>0,1,0), "spline":spline_model[0](oof_preds[0])})
         plot_df["pred_int"] = (plot_df["pred"]).astype(int)
