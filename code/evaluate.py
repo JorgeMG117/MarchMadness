@@ -13,12 +13,12 @@ def evaluate(results):
     
     print(results.head())
     """
-    TeamID      TeamName  Wins  PredictedWins
-    0    1163   Connecticut     6              1
-    1    1235       Iowa St     2              4
-    2    1228      Illinois     3              0
-    3    1120        Auburn     0              0
-    4    1361  San Diego St     2              0
+        TeamID      TeamName  PredictedWins  Wins
+    0    1163   Connecticut     6              6
+    1    1235       Iowa St     2              1
+    2    1228      Illinois     3              3
+    3    1120        Auburn     0              2
+    4    1361  San Diego St     2              1
     """
     results['Diff'] = results['PredictedWins'] - results['Wins']
     results['AbsDiff'] = results['Diff'].abs()
@@ -36,7 +36,7 @@ def evaluate(results):
     # 2 3 -> 2 - 3 = -1 -> 3 + -1 = 2 -> 2 * 2
     # 4 3 -> 4 - 3 = 1 -> 3 + 1 = 4 ERROR deberia ser 3
 
-    results['Points'] = np.where(results['Diff'] <= 0, 
+    results['Points'] = np.where(results['Diff'] <= 0,
                              (results['Wins'] + results['Diff']) * 2, 
                              (results['Wins'] - results['Diff']) * 2)
     points = results['Points'].sum()
