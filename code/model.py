@@ -16,8 +16,8 @@ class XGBPredictor:
         #print(y.shape)
 
         self.X = data[data.columns[6:]]
-        #print(X.head())
-        #print("Shape of X: " + str(X.shape))
+        print(self.X.head())
+        print("Shape of X: " + str(self.X.shape))
 
         self.param = {
             'eval_metric': 'mae',

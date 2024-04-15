@@ -109,6 +109,7 @@ class NCAADataset():
 
         """
         # Add last 14 days
+        print("Adding last 14 days stats")
         last14days_stats_T1 = season_results.loc[season_results.DayNum>118].reset_index(drop=True)
         last14days_stats_T1['win'] = np.where(last14days_stats_T1['PointDiff']>0,1,0)
         last14days_stats_T1 = last14days_stats_T1.groupby(['Season','T1_TeamID'])['win'].mean().reset_index(name='T1_win_ratio_14d')

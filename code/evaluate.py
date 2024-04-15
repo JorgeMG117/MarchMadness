@@ -7,14 +7,30 @@ import numpy as np
 
 def evaluate(results):
     num_games = results['Wins'].sum()
-    print(f"Number of games: {num_games}")
+    print(f"Number of games: {num_games}")#63
+
+    assert results['Wins'].sum() == results['PredictedWins'].sum()
     
     print(results.head())
+    """
+    TeamID      TeamName  Wins  PredictedWins
+    0    1163   Connecticut     6              1
+    1    1235       Iowa St     2              4
+    2    1228      Illinois     3              0
+    3    1120        Auburn     0              0
+    4    1361  San Diego St     2              0
+    """
     results['Diff'] = results['PredictedWins'] - results['Wins']
     results['AbsDiff'] = results['Diff'].abs()
     errors = results['AbsDiff'].sum()
+    print(f"Errors: {errors}")#90
 
-    accuracy = (num_games - errors) / num_games
+    results['Accuracy'] = np.where(results['Diff'] <= 0, 
+                             results['PredictedWins'], 
+                             results['Wins'])
+
+    accuracy = results['Accuracy'].sum() / num_games
+    #accuracy = (num_games - errors) / num_games
 
     # 3 3 -> 3 - 3 = 0 -> 3 + 0 = 3 -> 3 * 2
     # 2 3 -> 2 - 3 = -1 -> 3 + -1 = 2 -> 2 * 2
@@ -35,7 +51,6 @@ def compare_bracket(predictions):
 
     # Merge with the actual wins DataFrame
     merged_df = actual_results.merge(predictions_df, on='TeamID')
-    print(merged_df.head())
 
     accuracy, points = evaluate(merged_df)
 

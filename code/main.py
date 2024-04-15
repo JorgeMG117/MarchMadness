@@ -1,3 +1,4 @@
+from neural_network import NNPredictor
 from dataset import NCAADataset
 from model import XGBPredictor
 from evaluate import evaluate
@@ -133,15 +134,17 @@ def main():
     #print(dataset.tournament_data.columns)
 
 
-    #predictions = XGBModel(dataset.X_train, dataset.y_train, dataset.X_test)
-    #predictions, y_test = XGBModel(X, y)
-    xgb = XGBPredictor(dataset.tournament_data)
+    print("### TRAINING MODEL ###")
 
-    xgb.train_model()
+    #xgb = XGBPredictor(dataset.tournament_data)
+
+    #xgb.train_model()
+
+    nn = NNPredictor(dataset.tournament_data)
+
+    nn.train_model()
     
 
-    # Get top 4 finalists, get 4 teams with most predicted winrate wins/games_played
-    #top_4_teams =
 
     # Evaluate the model
 
@@ -155,8 +158,10 @@ def main():
     bracket_data = bracket_data[['Seed', 'TeamName', 'TeamID']]
     #print(bracket_data.head())
 
+    
     predictions = {}
-    simulate_bracket(bracket_data, dataset.expand_matchup, xgb.predict_matchup, predictions)
+    match_predictor = nn.predict_matchup
+    simulate_bracket(bracket_data, dataset.expand_matchup, match_predictor, predictions)
 
     # Evaluate predictions with the actual results
     compare_bracket(predictions)
