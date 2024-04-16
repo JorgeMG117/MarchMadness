@@ -1,6 +1,6 @@
 from neural_network import NNPredictor
 from dataset import NCAADataset
-from model import XGBPredictor
+from xgb import XGBPredictor
 from evaluate import evaluate
 from evaluate import compare_bracket
 import numpy as np
@@ -136,13 +136,13 @@ def main():
 
     print("### TRAINING MODEL ###")
 
-    #xgb = XGBPredictor(dataset.tournament_data)
+    xgb = XGBPredictor(dataset.tournament_data)
 
-    #xgb.train_model()
+    xgb.train_model()
 
-    nn = NNPredictor(dataset.tournament_data)
+    #nn = NNPredictor(dataset.tournament_data)
 
-    nn.train_model()
+    #nn.train_model()
     
 
 
@@ -160,7 +160,7 @@ def main():
 
     
     predictions = {}
-    match_predictor = nn.predict_matchup
+    match_predictor = xgb.predict_matchup
     simulate_bracket(bracket_data, dataset.expand_matchup, match_predictor, predictions)
 
     # Evaluate predictions with the actual results
