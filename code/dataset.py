@@ -215,12 +215,12 @@ if __name__ == '__main__':
 
     dataset = NCAADataset()
     
-    #print("Teams")
-    #print(dataset.teams.head())
+    print("### Teams")
+    print(dataset.teams.head())
 
-    #print("Season Results")
-    #print(dataset.season_results.head())
-    #print(dataset.season_results.shape)
+    print("### Season Results")
+    print(dataset.season_results.head())
+    print(dataset.season_results.shape)
 
 
     #print("Team Stats")
@@ -231,8 +231,10 @@ if __name__ == '__main__':
     #print(dataset.tournament_results.head())
     #print(dataset.tournament_results.shape)
 
-    print("Tournament Data")
+    print("### Tournament Data")
     print(dataset.tournament_data.head())
+    print(dataset.tournament_data.tail())
+    print(dataset.tournament_data.columns)
     print(dataset.tournament_data.shape)
 
     """
