@@ -61,17 +61,31 @@ class NNPredictor(nn.Module):
 
     def train_model(self):
         criterion = nn.BCELoss()
-        optimizer = optim.Adam(self.model.parameters(), lr=0.001, weight_decay=0.01)
+        optimizer = optim.Adam(self.model.parameters(), lr=0.001, weight_decay=0.03)
 
         train_losses = []
         train_accuracies = []
         test_losses = []
         test_accuracies = []
 
+        train_precisions = []
+        train_recalls = []
+        test_precisions = []
+        test_recalls = []
+
+
+        # Early stopping
+        best_val_loss = float('inf')
+        early_stop_counter = 0
+        patience = 3
+
+        # Learning Rate Scheduling
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+
         # Training
-        self.model.train()
         for epoch in range(self.epochs):
-            train_loss, correct, total = 0, 0, 0
+            self.model.train()
+            train_loss, correct, total, tp, fp, fn = 0, 0, 0, 0, 0, 0
 
             for inputs, labels in self.train_loader:
                 optimizer.zero_grad()
@@ -86,14 +100,21 @@ class NNPredictor(nn.Module):
                 predicted = (outputs > 0.5).float()
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
+                tp += ((predicted == 1) & (labels == 1)).sum().item()
+                fp += ((predicted == 1) & (labels == 0)).sum().item()
+                fn += ((predicted == 0) & (labels == 1)).sum().item()
             
-            # Calculate average loss and accuracy
+            # Calculate metrics
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
             train_losses.append(train_loss / len(self.train_loader.dataset))
             train_accuracies.append(100 * correct / total)
+            train_precisions.append(precision)
+            train_recalls.append(recall)
 
             # Evaluation
             self.model.eval()
-            test_loss, correct, total = 0, 0, 0
+            test_loss, correct, total, tp, fp, fn = 0, 0, 0, 0, 0, 0
             with torch.no_grad():
                 for inputs, labels in self.test_loader:
                     outputs = self.model(inputs)
@@ -102,9 +123,34 @@ class NNPredictor(nn.Module):
                     predicted = (outputs > 0.5).float()
                     correct += (predicted == labels).sum().item()
                     total += labels.size(0)
+                    tp += ((predicted == 1) & (labels == 1)).sum().item()
+                    fp += ((predicted == 1) & (labels == 0)).sum().item()
+                    fn += ((predicted == 0) & (labels == 1)).sum().item()
 
+            # Calculate metrics for test
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
             test_losses.append(test_loss / len(self.test_loader.dataset))
             test_accuracies.append(100 * correct / total)
+            test_precisions.append(precision)
+            test_recalls.append(recall)
+            # TODO: Que hacer con precision y recall??
+
+            # Early stopping
+            if test_losses[-1] < best_val_loss:
+                best_val_loss = test_losses[-1]
+                early_stop_counter = 0
+            else:
+                early_stop_counter += 1
+            
+            if early_stop_counter >= patience:
+                print(f'Early stopping at epoch {epoch+1}')
+                break
+
+
+            # Learning Rate Scheduling
+            scheduler.step()
+
 
             #if (epoch + 1) % 10 == 0:
             print(f'Epoch {epoch+1}: Train Loss: {train_losses[-1]}, Train Accuracy: {train_accuracies[-1]}%, '
@@ -131,6 +177,7 @@ class NNPredictor(nn.Module):
         plt.ylabel('Accuracy (%)')
         plt.legend()
 
+        plt.savefig('img/train_val_loss_acc.png')
         plt.show()
 
 
@@ -159,3 +206,18 @@ class NNPredictor(nn.Module):
 
         print(predicted_probability)
         return predicted_probability >= 0.5
+    
+    def __str__(self):
+        # Initialize an empty string to store the network structure
+        network_str = ""
+        
+        # Iterate through the layers of the model
+        for i, layer in enumerate(self.model):
+            # Add the layer type and its parameters to the string
+            network_str += f"Layer {i+1}: {layer.__class__.__name__}"
+            # Add the number of input and output features if applicable
+            if hasattr(layer, "in_features"):
+                network_str += f" (Input: {layer.in_features}, Output: {layer.out_features})"
+            network_str += "\n"
+        
+        return network_str
