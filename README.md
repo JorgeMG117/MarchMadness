@@ -122,6 +122,9 @@ Para facilitar las fusiones de datos futuras, se duplican las estadísticas agre
 #### 3. Fusión de Estadísticas de Temporada con Datos del Torneo
 Las estadísticas de la temporada regular se fusionan con los datos de los partidos del torneo. Esta fusión se realiza para ambos equipos en cada partido, enriqueciendo los registros con un contexto histórico amplio que es crucial para el análisis predictivo.
 
+Basicamente se fusiona los 
+| Season | DayNum | T1_TeamID | T1_Score | T2_TeamID | T2_Score, de cada partido de playoffs, con las correspondientes estadisticas calculadas anteriormente
+
 #### 4. Inclusión de la Diferencia de Semillas
 Se añade la diferencia de semillas entre los dos equipos en cada partido del torneo. La semilla refleja la valoración y expectativas del comité del torneo hacia los equipos, y su diferencia es un indicador significativo que puede influir en las predicciones del resultado del partido.
 
@@ -231,13 +234,157 @@ Para evaluar los modelos de machine learning, hemos utilizado la log-loss (pérd
 
 ## Modelos de Machine Learning y Experimentación
 
-Durante la fase de experimentación, probamos varios modelos, incluyendo regresión logística, bosques aleatorios y redes neuronales. Cada modelo se ajustó utilizando una combinación de características estadísticas de los equipos y datos históricos de partidos.
-
 Durante la fase de experimentación, exploramos dos principales modelos de aprendizaje automático: redes neuronales y XGBoost. Ambos modelos fueron evaluados con la intención de maximizar la precisión y confiabilidad en las predicciones del torneo NCAA.
 
 ### XGBoost
 
 Utilizamos XGBoost (Extreme Gradient Boosting) por su reconocida eficiencia en competencias de datos y su habilidad para manejar variados tipos de características. Configuramos XGBoost para minimizar el error absoluto medio (MAE), utilizando una función de pérdida personalizada basada en la distribución de Cauchy, lo que ayudó a mejorar la robustez del modelo frente a valores atípicos. El ajuste fino del modelo se realizó mediante una validación cruzada repetida para garantizar su capacidad de generalización y estabilidad.
+
+#### **Inicialización y Configuración de Datos**
+
+Partiendo de los datos preprocesados explicados anteriormente se aplica lo siguiente:
+
+- **Cálculo de la Variable Objetivo:** La diferencia de puntuación entre los equipos (`T1_Score` - `T2_Score`) se establece como la variable objetivo `y`. Esta representación directamente relacionada con el resultado del partido facilita un enfoque de modelado orientado al objetivo real.
+- **Selección de Características:** Las características utilizadas para el entrenamiento se extraen del DataFrame, excluyendo las primeras seis columnas que no son relevantes para el modelo. Esto asegura que solo se utilicen datos pertinentes que potencialmente influyan en el resultado del partido.
+- `Season`
+- `DayNum`
+- `T1_TeamID`
+- `T1_Score`
+- `T2_TeamID`
+- `T2_Score`
+
+#### **Configuración de Parámetros del Modelo**
+El modelo se configura con parámetros específicos que controlan su comportamiento durante el entrenamiento:
+
+**Métrica de Evaluación:** Se utiliza el error absoluto medio (`mae`), que proporciona una medida robusta del error que penaliza igualmente todos los errores, independientemente de su magnitud.
+
+**Hiperparámetros:** Se ajustan varios hiperparámetros para optimizar el desempeño del modelo.
+
+- **`eval_metric`: 'mae'**
+  - **Descripción:** Esta es la métrica de evaluación utilizada para validar los datos mientras el modelo se entrena. 'MAE' significa Error Absoluto Medio, una métrica que proporciona una medida promedio de las diferencias absolutas entre las predicciones y los valores observados, dando igual peso a todos los errores.
+  
+- **`booster`: 'gbtree'**
+  - **Descripción:** Especifica el tipo de modelo que se utilizará. 'gbtree' indica que se usarán árboles de decisión potenciados como base del modelo. Este es el tipo de refuerzo más común y generalmente el más efectivo para problemas estructurados/tabulares.
+
+- **`eta`: 0.05**
+  - **Descripción:** También conocida como la tasa de aprendizaje, controla la velocidad a la que el modelo se adapta a las complejidades del problema. Un valor más bajo hace que el entrenamiento sea más lento, pero puede mejorar la precisión del modelo y prevenir el sobreajuste.
+
+- **`subsample`: 0.35**
+  - **Descripción:** Es la fracción de observaciones a ser seleccionadas aleatoriamente para cada árbol. Submuestrear ayuda a prevenir el sobreajuste y añade más aleatoriedad al proceso de entrenamiento.
+  
+- **`colsample_bytree`: 0.7**
+  - **Descripción:** Es la fracción de columnas a ser seleccionadas aleatoriamente para cada árbol. Al igual que `subsample`, este parámetro ayuda a controlar el sobreajuste, asegurando que cada árbol se construya con una muestra aleatoria de las características.
+
+- **`num_parallel_tree`: 3**
+  - **Descripción:** Este parámetro especifica el número de árboles que se construirán en paralelo en cada iteración del boosting. Usar más de un árbol por iteración es una forma de potenciar el ensamblaje, similar al bagging.
+
+- **`min_child_weight`: 40**
+  - **Descripción:** Define el peso mínimo necesario en las hojas para continuar haciendo una partición en el árbol. Un valor más alto reduce el sobreajuste al hacer que el modelo sea más conservador, requiriendo más evidencia antes de decidir hacer una división.
+
+- **`gamma`: 10**
+  - **Descripción:** Especifica el mínimo descenso en la función de pérdida requerido para hacer una partición adicional en un nodo del árbol. Un valor mayor hace que el modelo sea más conservador, evitando particiones que resultan en ganancias mínimas en el rendimiento.
+
+- **`max_depth`: 3**
+  - **Descripción:** Define la profundidad máxima de cada árbol. Limitar la profundidad del árbol ayuda a prevenir el sobreajuste, asegurando que los árboles no sean demasiado complejos y especializados en los datos de entrenamiento.
+
+- **`verbosity`: 0**
+  - **Descripción:** Controla el nivel de salida que el modelo produce mientras se entrena. Un valor de '0' significa silencio; es decir, no se imprimirán mensajes durante el entrenamiento, lo cual es útil para mantener los registros de entrenamiento limpios y enfocados en la información más crítica.
+
+Estos parámetros están diseñados para equilibrar la precisión, la eficiencia computacional y la prevención del sobreajuste, adaptando el modelo a las particularidades de los datos y el problema específico de predicción de partidos de la NCAA.
+
+
+
+#### **Entrenamiento y Evaluación del Modelo**
+
+Se siguen los siguientes pasos para crear el modelo
+
+- **Función de Objetivo de Cauchy:** Implementa una función de pérdida personalizada basada en la distribución de Cauchy para mejorar la robustez del modelo frente a valores atípicos, lo cual es común en datos deportivos.
+
+- **Validación Cruzada:** Se ha entrenando el modelo en cada pliegue y luego validándolo en el pliegue restante. La validación cruzada ayuda a entender cómo se desempeñaría el modelo en general. Y es esencial para ajustar los hiperparámetros del modelo. De esta fase sacamos el valor de iteration_counts.
+
+Repeat CV result:  [99, 114, 140]
+
+Validation MAE:  [9.005042891538642, 9.011901557898794, 9.009583344636308]
+
+Vemos como va descenciendo el MAE y seleccionamos aquel que nos da el error mas bajo.
+
+- **Out-Of-Fold Predictions:** Las predicciones fuera de muestra se refieren a las estimaciones del modelo generadas sobre los datos que no se utilizaron durante el entrenamiento de ese modelo específico dentro de una iteración de validación cruzada, que se utilizan posteriormente para calcular las métricas de rendimiento y proporcionar una forma de validación interna.
+
+
+<img src="img/out-of-fold.png" alt="Grafica de out-of-fold predictions" title="Grafica de out-of-fold predictions" width="400" height="300">
+
+
+
+Una vez entrenado el modelo, se evalúan las predicciones:
+
+- **Interpolación con Splines:** Para mejorar la calibración de las probabilidades predichas, se utiliza una interpolación de spline que ajusta una curva suave a las predicciones, permitiendo ajustes finos en base a la distribución de los resultados. Se realizan ajustes manuales para cuentas de enfrentamientos donde la historia y la lógica indican un resultado probable, como los enfrentamientos entre seeds altamente dispares.
+
+<img src="img/spline.png" alt="Grafica de out-of-fold predictions" title="Grafica de out-of-fold predictions" width="400" height="300">
+
+- **Entrenamiento final:**
+
+adjusted logloss of cvsplit 0: 0.5318912956329822
+
+adjusted logloss of cvsplit 1: 0.5316056931215835
+
+adjusted logloss of cvsplit 2: 0.5306631444768599
+
+| Season | Value     |
+|--------|-----------|
+| 2003   | 0.516914  |
+| 2004   | 0.494575  |
+| 2005   | 0.472573  |
+| 2006   | 0.528037  |
+| 2007   | 0.422747  |
+| 2008   | 0.461141  |
+| 2009   | 0.474632  |
+| 2010   | 0.546291  |
+| 2011   | 0.579826  |
+| 2012   | 0.555434  |
+| 2013   | 0.588209  |
+| 2014   | 0.567107  |
+| 2015   | 0.502188  |
+| 2016   | 0.551625  |
+| 2017   | 0.483643  |
+| 2018   | 0.587167  |
+| 2019   | 0.482147  |
+| 2021   | 0.575284  |
+| 2022   | 0.637760  |
+| 2023   | 0.586124  |
+
+
+#### **Visualización y Predicción Final**
+- **Visualización de Desempeño:** Se proporcionan visualizaciones que comparan las probabilidades predichas con los resultados reales, ofreciendo una visión clara de cómo el modelo está interpretando y respondiendo a los datos.
+- **Predicción de Partidos:** El método `predict_matchup` utiliza el modelo y la interpolación de spline para predecir y devolver un resultado binario, indicando si el equipo 1 es el probable ganador del enfrentamiento.
+
+
+
+
+
+**Simulacion March Madness 2024**
+
+**Resultados obtenidos**
+
+Imagen del bracket completado
+
+Errors: 50
+Accuracy: 0.60
+Points: 
+
+**Comparacion con profesionales**
+
+**Stephen A'Smith**
+
+Errors: 42
+Accuracy: 0.67
+Points: 
+
+Se ha probado con distintos hiperparametros, al final los mejores que se han obtenido son los que se encuentran en la descripcino de los hiperparametros anterior
+
+Los errores obtenidos son los siguientes
+
+
+
 
 ### Redes Neuronales
 

@@ -16,6 +16,7 @@ class XGBPredictor:
         #print(y.shape)
 
         self.X = data[data.columns[6:]]
+        print("Features: ")
         print(self.X.head())
         print("Shape of X: " + str(self.X.shape))
 
@@ -62,6 +63,7 @@ class XGBPredictor:
                 )
             )
 
+        # print("Cross-validation results: " + str(xgb_cv))
         self.iteration_counts = [np.argmin(x['test-mae-mean'].values) for x in xgb_cv]
         print("Repeat CV result: ", self.iteration_counts)
         val_mae = [np.min(x['test-mae-mean'].values) for x in xgb_cv]
@@ -88,7 +90,16 @@ class XGBPredictor:
                 preds[val_index] = model.predict(dval_i)
             oof_preds.append(np.clip(preds,-30,30))
 
-        #self.visualize_performance(oof_preds, y)
+
+        # Plotting the out-of-fold predictions
+        plot_df = pd.DataFrame({"pred": oof_preds[0], "label": np.where(y > 0, 1, 0)})
+        plot_df["pred_int"] = plot_df["pred"].astype(int)
+        plot_df = plot_df.groupby('pred_int')['label'].mean().reset_index(name='average_win_pct')
+
+        plt.figure()
+        plt.plot(plot_df.pred_int, plot_df.average_win_pct)
+        plt.savefig('img/out-of-fold.png')
+        #plt.show()
 
 
         # Spline interpolation
@@ -118,11 +129,11 @@ class XGBPredictor:
 
             val_cv.append(pd.DataFrame({"y":np.where(y>0,1,0), "pred":spline_fit, "season":self.data.Season}))
             print(f"adjusted logloss of cvsplit {i}: {log_loss(np.where(y>0,1,0),spline_fit)}") 
-  
+
         val_cv = pd.concat(val_cv)
         val_cv = val_cv.groupby('season').apply(lambda x: log_loss(x.y, x.pred))
         print(val_cv)
-       
+    
 
         plot_df = pd.DataFrame({"pred":oof_preds[0], "label":np.where(y>0,1,0), "spline":spline_model[0](oof_preds[0])})
         plot_df["pred_int"] = (plot_df["pred"]).astype(int)
@@ -131,6 +142,7 @@ class XGBPredictor:
         plt.figure()
         plt.plot(plot_df.pred_int,plot_df.spline)
         plt.plot(plot_df.pred_int,plot_df.label)
+        plt.savefig('img/spline.png')
         #plt.show()
 
 
@@ -175,12 +187,3 @@ class XGBPredictor:
         #sub[['ID', 'Pred']].to_csv("submission.csv", index=None)
 
 
-    @staticmethod
-    def visualize_performance(oof_preds, y):
-        plot_df = pd.DataFrame({"pred": oof_preds[0], "label": np.where(y > 0, 1, 0)})
-        plot_df["pred_int"] = plot_df["pred"].astype(int)
-        plot_df = plot_df.groupby('pred_int')['label'].mean().reset_index(name='average_win_pct')
-
-        plt.figure()
-        plt.plot(plot_df.pred_int, plot_df.average_win_pct)
-        plt.show()
