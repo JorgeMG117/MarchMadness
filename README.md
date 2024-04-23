@@ -245,6 +245,15 @@ Utilizamos XGBoost (Extreme Gradient Boosting) por su reconocida eficiencia en c
 Partiendo de los datos preprocesados explicados anteriormente se aplica lo siguiente:
 
 - **Cálculo de la Variable Objetivo:** La diferencia de puntuación entre los equipos (`T1_Score` - `T2_Score`) se establece como la variable objetivo `y`. Esta representación directamente relacionada con el resultado del partido facilita un enfoque de modelado orientado al objetivo real.
+
+| Index | Target |
+|-------|--------|
+| 0     | 8      |
+| 1     | -8     |
+| 2     | -29    |
+| 3     | 29     |
+| 4     | 13     |
+
 - **Selección de Características:** Las características utilizadas para el entrenamiento se extraen del DataFrame, excluyendo las primeras seis columnas que no son relevantes para el modelo. Esto asegura que solo se utilicen datos pertinentes que potencialmente influyan en el resultado del partido.
 - `Season`
 - `DayNum`
@@ -252,6 +261,15 @@ Partiendo de los datos preprocesados explicados anteriormente se aplica lo sigui
 - `T1_Score`
 - `T2_TeamID`
 - `T2_Score`
+
+|    | T1_FGM    | T1_FGA    | T1_FGM3   | T1_FGA3   | T1_FTM    | T1_FTA    | T1_OR     | ... | T2_opponent_Stl | T2_opponent_Blk | T2_opponent_PF | T2_PointDiff | T1_seed | T2_seed | Seed_diff |
+|----|-----------|-----------|-----------|-----------|-----------|-----------|-----------|-----|-----------------|-----------------|----------------|--------------|---------|---------|-----------|
+| 0  | 24.379310 | 56.793103 | 6.482759  | 18.000000 | 15.965517 | 20.931034 | 12.275862 | ... | 8.000000        | 2.600000        | 21.633333      | 1.966667     | 16      | 16      | 0         |
+| 1  | 24.733333 | 55.266667 | 5.933333  | 18.500000 | 17.400000 | 28.066667 | 13.166667 | ... | 8.827586        | 4.241379        | 18.689655      | -7.241379    | 16      | 16      | 0         |
+| 2  | 24.827586 | 55.862069 | 5.275862  | 15.482759 | 12.862069 | 19.551724 | 12.965517 | ... | 5.964286        | 2.392857        | 22.071429      | 14.964286    | 16      | 1       | 15        |
+| 3  | 30.321429 | 65.714286 | 7.035714  | 20.071429 | 17.535714 | 25.000000 | 15.178571 | ... | 7.103448        | 3.655172        | 17.931034      | 4.655172     | 1       | 16      | -15       |
+| 4  | 27.206897 | 56.896552 | 4.000000  | 12.586207 | 17.551724 | 26.206897 | 13.689655 | ... | 7.275862        | 3.172414        | 19.931034      | 8.689655     | 10      | 7       | 3         |
+
 
 #### **Configuración de Parámetros del Modelo**
 El modelo se configura con parámetros específicos que controlan su comportamiento durante el entrenamiento:
@@ -368,7 +386,9 @@ adjusted logloss of cvsplit 2: 0.5306631444768599
 Imagen del bracket completado
 
 Errors: 50
+
 Accuracy: 0.60
+
 Points: 
 
 **Comparacion con profesionales**
@@ -376,7 +396,9 @@ Points:
 **Stephen A'Smith**
 
 Errors: 42
+
 Accuracy: 0.67
+
 Points: 
 
 Se ha probado con distintos hiperparametros, al final los mejores que se han obtenido son los que se encuentran en la descripcino de los hiperparametros anterior
@@ -389,6 +411,61 @@ Los errores obtenidos son los siguientes
 ### Redes Neuronales
 
 Las redes neuronales fueron seleccionadas por su habilidad para modelar interacciones complejas entre variables. Implementamos una arquitectura de red profunda que se ajustó a través de diversas capas ocultas y técnicas de regularización como el Dropout para evitar el sobreajuste. La red fue entrenada para optimizar la función de pérdida logarítmica, proporcionando así estimaciones de probabilidad que facilitan la interpretación en contextos de apuestas y análisis deportivo.
+
+
+The features are normalized using StandardScaler
+
+Training the Model:
+
+Uses Binary Cross-Entropy Loss (BCELoss) for the loss function and Adam optimizer.
+Implements learning rate scheduling and early stopping based on validation loss to prevent overfitting.
+For each epoch, the code performs training and validation steps, calculating and printing loss and accuracy metrics.
+
+#### **Training Parameters**
+
+- **Batch Size:** 32
+- **Number of Epochs:** 20
+- **Learning Rate:** 0.001
+- **Weight Decay:** 0.03
+- **Patience for Early Stopping:** 3
+- **Scheduler Step Size:** 10
+- **Scheduler Gamma:** 0.1
+
+#### **Neural Network Structure**
+
+A simple sequential model with two hidden layers. The network includes ReLU activation functions and dropout layers to prevent overfitting, followed by a sigmoid output layer for binary classification.
+
+- **Sequential Model:**
+  - **Layer 1:** Linear
+    - **Input Features:** 57
+    - **Output Features:** 16
+    - **Bias:** True
+  - **Layer 2:** ReLU
+  - **Layer 3:** Dropout
+    - **Probability:** 0.6
+    - **Inplace:** False
+  - **Layer 4:** Linear
+    - **Input Features:** 16
+    - **Output Features:** 8
+    - **Bias:** True
+  - **Layer 5:** ReLU
+  - **Layer 6:** Dropout
+    - **Probability:** 0.6
+    - **Inplace:** False
+  - **Layer 7:** Linear
+    - **Input Features:** 8
+    - **Output Features:** 1
+    - **Bias:** True
+  - **Layer 8:** Sigmoid
+
+
+#### **Resultados de experimentacion**
+
+After training, it plots training and validation loss and accuracy to visualize the model's performance over epochs.
+Tras el entrenamiento, traza las pérdidas y la precisión del entrenamiento y la validación para visualizar el rendimiento del modelo a lo largo de las épocas.
+
+![Train and validation loss and accuracy](img/train_val_loss_acc.png "Train and validation loss and accuracy")
+
 
 **Resultados de experimentación**: Aquí, puedes detallar los resultados de tus experimentos, incluyendo métricas de rendimiento como la precisión, recall, y especialmente la log-loss para cada modelo.
 
