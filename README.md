@@ -1,18 +1,21 @@
 Autor: Jorge Martinez, 100508957@alumnos.uc3m.es
 
-Fecha: April 7, 2024
+Fecha: April 28, 2024
 
 
 # Informe del Proyecto de March Machine Learning Mania 2024
 
 ## Resumen
 
-Este proyecto se enfoca en el desarrollo de un modelo predictivo robusto para predecir los resultados de los juegos del torneo de la NCAA, utilizando técnicas avanzadas de aprendizaje automático. Se exploran varios modelos y se selecciona el que ofrece la mejor precisión y confiabilidad en sus predicciones. Este informe detalla el proceso de selección del modelo, la preparación de los datos, y los resultados obtenidos.
+Este proyecto enfrenta el reto de desarrollar un modelo predictivo avanzado que pueda estimar con precisión los resultados de los partidos del torneo de baloncesto de la NCAA, también conocido como March Madnes, en el marco de la competencia de Kaggle "March Machine Learning Mania 2024". Mediante un análisis comparativo de diversas técnicas de aprendizaje automático, se identifican los modelos que demuestran ser más prometedores en términos de precisión y confiabilidad. En particular, se implementan y evalúan modelos avanzados basados en árboles de decisión, como XGBoost, así como modelos de redes neuronales profundas, para determinar cuál ofrece un mejor desempeño predictivo.
 
+La preparación de los datos es fundamental para el éxito de los modelos. Este proceso incluye una meticulosa limpieza, una cuidadosa selección y una transformación estratégica de características para maximizar la eficiencia de los modelos predictivos. Además, se aplican técnicas de validación cruzada para asegurar la robustez de los modelos.
+
+El informe detalla exhaustivamente el proceso de selección de los modelos, incluyendo una justificación completa de las decisiones tomadas en cada etapa, desde la preparación inicial de los datos hasta la evaluación final de los modelos. Los resultados obtenidos no solo confirman la eficacia de los modelos seleccionados, sino que también incluyen una simulación detallada del torneo March Madness 2024, permitiendo un análisis profundo del comportamiento del modelo en condiciones de torneo real.
 
 ## Fuente de Datos
 
-Este proyecto utiliza datos de la competición March Machine Learning Mania 2024, disponible en Kaggle. La competición proporciona un conjunto de datos que incluye resultados históricos de juegos y estadísticas de equipos participantes en el torneo de baloncesto de la NCAA.
+Este proyecto utiliza datos de la competición March Machine Learning Mania 2024, disponible en Kaggle. La competición proporciona un conjunto de datos tabulares que incluye resultados históricos de juegos y estadísticas de equipos participantes en el torneo de baloncesto de la NCAA.
 
 Enlace al dataset: [March Machine Learning Mania 2024 Dataset](https://www.kaggle.com/c/march-machine-learning-mania-2024)
 
@@ -36,23 +39,25 @@ Este archivo identifica los diferentes equipos universitarios presentes en el co
 
 ### MNCAATourneySeeds.csv
 
-Estos archivos identifican los cabezas de serie de todos los equipos en cada torneo de la NCAA®, para todas las temporadas de datos históricos. Por lo tanto, hay entre 64 y 68 filas para cada año, dependiendo de si hubo partidos de desempate y de cuántos hubo.
+Este archivo identifica las posiciones de todos los equipos en cada torneo de la NCAA®, para todas las temporadas de datos históricos. Por lo tanto, hay entre 64 y 68 filas para cada año, dependiendo de si hubo partidos de desempate y de cuántos hubo.
 
 #### Descripción de las columnas:
 
 | Columna | Descripción |
 |---------|-------------|
 | **Season** | El año en que se jugó el torneo. |
-| **Seed** | Se trata de un identificador de 3/4 caracteres de la semilla, donde el primer carácter es W, X, Y o Z (que identifica la región en la que estaba el equipo) y los dos dígitos siguientes (01, 02, ..., 15 o 16) indican la semilla dentro de la región. |
+| **Seed** | Se trata de un identificador de 3/4 caracteres de la posicion, donde el primer carácter es W, X, Y o Z (que identifica la región en la que estaba el equipo) y los dos dígitos siguientes (01, 02, ..., 15 o 16) indican la clasificacion dentro de la región. |
 | **TeamID** | Identifica el número de identificación del equipo. |
 
 
 
 ### MRegularSeasonDetailedResults.csv
 
-Estos archivos proporcionan los resultados de los equipos de muchas temporadas regulares de datos históricos, a partir de la temporada 2003.
+Este archivo proporciona los resultados de los equipos de muchas temporadas regulares de datos históricos, a partir de la temporada 2003.
 
-Se muestran las 5 primeras filas de estos para que se pueda ver el tipo de informacion que continen
+Contiene una linea de datos para cada partido de la temporada regular, con las estadisticas detalladas del encuentro.
+
+Se muestran las 5 primeras filas de estos para que se pueda ver el tipo de informacion que continen:
 
 | Season | DayNum | WTeamID | WScore | LTeamID | LScore | WLoc | NumOT | WFGM | WFGA | ... | LAst | LTO | LStl | LBlk | LPF |
 |--------|--------|---------|--------|---------|--------|------|-------|------|------|-----|------|-----|------|------|-----|
@@ -65,8 +70,11 @@ Se muestran las 5 primeras filas de estos para que se pueda ver el tipo de infor
 
 ### MNCAATourneyDetailedResults.csv
 
-Estos archivos proporcionan los resultados de los equipos en muchos torneos de la NCAA®, a partir de la temporada 2003. 
+Este archivo proporciona los resultados y estadisticas de los equipos en muchos torneos de la NCAA®, a partir de la temporada 2003. 
 
+Al igual que el anterior archivo, contiene una linea de datos para cada partido, con las estadisticas detalladas del encuentro.
+
+Se muestran las 5 primeras filas de estos para que se pueda ver el tipo de informacion que continen:
 
 | Season | DayNum | WTeamID | WScore | LTeamID | LScore | WLoc | NumOT | WFGM | WFGA | WFGM3 | WFGA3 | WFTM | ... | LFGM | LFGA | LFGM3 | LFGA3 | LFTM | LFTA | LOR | LDR | LAst | LTO | LStl | LBlk | LPF |
 |--------|--------|---------|--------|---------|--------|------|-------|------|------|-------|-------|------|-----|------|------|-------|-------|------|------|-----|-----|------|-----|------|------|-----|
@@ -84,19 +92,25 @@ Contiene el cuadro de playoffs de este March Madness 2024
 
 ## Objetivo del Proyecto
 
-El objetivo de este proyecto es desarrollar un modelo predictivo capaz de predecir los resultados de los partidos del torneo de la NCAA. Buscamos crear un modelo que no solo prediga con precisión los ganadores de cada partido, sino que también estime la probabilidad de victoria de cada equipo, proporcionando así insights valiosos para apuestas y análisis deportivos.
+El propósito principal de este proyecto es desarrollar un modelo predictivo avanzado para los partidos del torneo March Madness 2024 de la NCAA. Este modelo no solo buscará predecir con alta precisión los ganadores de cada partido, sino que también calculará la probabilidad de victoria para cada equipo. Este enfoque dual permitirá estimar los resultados de manera más completa y detallada.
+
+El objetivo final es competir y destacar en la competencia de Kaggle "March Machine Learning Mania 2024", diseñando un bracket que maximice la precisión en las predicciones. Este bracket se completa siguiendo el formato típico del torneo, como se muestra en la imagen a continuación:
+
+![Distribución de victorias por ranking](img/2024-NCAA-tournament-bracket.avif)
+
+
 
 ## Exploración de los Datos e Información Relevante
 
-El dataset proporcionado incluye variables como el historial de partidos, rankings de equipos, estadísticas de rendimiento, entre otros. Un análisis exploratorio inicial revela patrones interesantes, como la importancia de la defensa sobre el ataque para predecir victorias o la correlación entre el ranking de un equipo y su probabilidad de avanzar en el torneo.
+
+El dataset proporcionado para este proyecto incluye una variedad de variables, como el historial de partidos, rankings de equipos y estadísticas de rendimiento. Se aplicarán diversas transformaciones a estos datos para optimizar su estructura, facilitando así una mejor adaptación a los modelos predictivos. Este proceso de transformación tiene como objetivo alinear los datos con las necesidades analíticas específicas del modelo, mejorando la capacidad del mismo para realizar predicciones precisas y efectivas.
+
 
 ### Preparacion de los datos
 
-Partimos de los datos contenidos en MRegularSeasonDetailedResults.csv y MNCAATourneyDetailedResults.csv y le aplicamos transformaciones que basicamente consisten en cambiar de ganador (W) y perdedor (L) a, equipo 1 (T1) y equipo 2 (T2). Duplicando el numero de filas que teniamos originalmente, ya que para cada partido inicial se consideran dos casos, en el que el ganador es el equipo 1 y en el que es el equipo 2.
+El proceso de preparación de los datos comienza con los archivos MRegularSeasonDetailedResults.csv y MNCAATourneyDetailedResults.csv. Se realiza una transformación importante en la estructura de estos datos: cambiar la nomenclatura de ganador (W) y perdedor (L) a equipo 1 (T1) y equipo 2 (T2). Esto implica duplicar el número de filas original, ya que para cada partido se consideran dos casos: uno donde el ganador es el equipo 1 y otro donde es el equipo 2.
 
-Esto se aplica tanto al conjunto de datos de la temporada regular como a los datos de playoffs.
-
-Obteniendo unos datos como los siguientes:
+Esta transformación se aplica tanto a los datos de la temporada regular como a los de los playoffs, resultando en una estructura de datos mejorada para análisis predictivo:
 
 | Season | DayNum | T1_TeamID | T1_Score | T2_TeamID | T2_Score | location | NumOT | T1_FGM | T1_FGA | ... | T2_FTM | T2_FTA | T2_OR | T2_DR | T2_Ast | T2_TO | T2_Stl | T2_Blk | T2_PF | PointDiff |
 |--------|--------|-----------|----------|-----------|----------|----------|-------|--------|--------|-----|--------|--------|-------|-------|--------|-------|--------|-------|-------|-----------|
@@ -109,28 +123,40 @@ Obteniendo unos datos como los siguientes:
 
 ### Creación de atributos
 
-Patiendo de los datos modificados de temporada regular y playoffs, y seeds de los playoffs de cada equipo en los distintos años, se aplican las siguientes operaciones.
+Partiendo de los datos modificados de temporada regular y playoffs, y considerando los seeds de los equipos en los distintos años, se llevan a cabo varias operaciones para enriquecer el dataset:
 
-Esta función tiene como objetivo enriquecer los datos de los partidos del torneo con estadísticas relevantes y derivadas que faciliten la construcción de un modelo predictivo más robusto y preciso para los partidos de la NCAA. La función realiza las siguientes operaciones:
+#### 1. Agregación de estadísticas de temporada regular por equipo y temporada
 
-#### 1. Agregación de Estadísticas de Temporada Regular por Equipo y Temporada
-La función comienza agrupando las estadísticas de los partidos de la temporada regular por cada equipo y temporada. Se seleccionan métricas clave como tiros de campo, rebotes, asistencias, entre otros, calculando el promedio para obtener un resumen estadístico que refleja el desempeño promedio de los equipos a lo largo de la temporada.
+Se calcula el promedio de cada equipo de cada temporada de métricas clave como tiros de campo, rebotes y asistencias para cada equipo y temporada.
 
-#### 2. Duplicación de Estadísticas para Equipos 1 y 2
+
+#### 2. Duplicación de estadísticas para equipos 1 y 2
+
 Para facilitar las fusiones de datos futuras, se duplican las estadísticas agregadas, creando dos conjuntos de columnas: uno para el "equipo 1" y otro para el "equipo 2". Esto permite asociar cada partido del torneo con un conjunto completo de estadísticas para ambos equipos involucrados.
 
-#### 3. Fusión de Estadísticas de Temporada con Datos del Torneo
+
+#### 3. Fusión de estadísticas de temporada con datos del torneo
+
 Las estadísticas de la temporada regular se fusionan con los datos de los partidos del torneo. Esta fusión se realiza para ambos equipos en cada partido, enriqueciendo los registros con un contexto histórico amplio que es crucial para el análisis predictivo.
 
-Basicamente se fusiona los 
-| Season | DayNum | T1_TeamID | T1_Score | T2_TeamID | T2_Score, de cada partido de playoffs, con las correspondientes estadisticas calculadas anteriormente
+Se fusiona las columnas, *Season*, *DayNum*, *T1_TeamID*, *T1_Score*, *T2_TeamID*, *T2_Score*, de cada partido de playoffs, con las correspondientes estadisticas calculadas anteriormente.
 
-#### 4. Inclusión de la Diferencia de Semillas
-Se añade la diferencia de semillas entre los dos equipos en cada partido del torneo. La semilla refleja la valoración y expectativas del comité del torneo hacia los equipos, y su diferencia es un indicador significativo que puede influir en las predicciones del resultado del partido.
+#### 4. Inclusión de la posicion en la clasificación
+
+Se añade la diferencia de posicion entre los dos equipos en cada partido del torneo. La posicion refleja los resultados en la temporada regular, por lo tanto, la valoración y expectativas de los equipos, y su diferencia es un indicador significativo que puede influir en las predicciones del resultado del partido.
 
 
+#### 5. Porcentaje de victorias en los ultimas dos semanas de temporada regular
 
-Obteniendo esto como resultado
+Este indicador, aunque no siempre utilizado, puede proporcionar insights adicionales sobre la forma reciente de los equipos.
+
+
+#### Forma final de los datos
+
+Los datos finales enriquecidos proporcionan una base sólida para la construcción de un modelo predictivo robusto y preciso para los partidos de la NCAA.
+
+
+Obteniendo esto como resultado:
 
 | Season | DayNum | T1_TeamID | T1_Score | T2_TeamID | T2_Score | T1_FGM  | ... | T2_opponent_Stl | T2_opponent_Blk | T2_opponent_PF | T2_PointDiff | T1_seed | T2_seed | Seed_diff |
 |--------|--------|-----------|----------|-----------|----------|---------|-----|-----------------|-----------------|----------------|--------------|---------|---------|-----------|
@@ -149,7 +175,7 @@ Obteniendo esto como resultado
 
 63 columnas
 
-**Column Names**
+**Nombre de las columnas**
 
 - `Season`
 - `DayNum`
@@ -215,21 +241,6 @@ Obteniendo esto como resultado
 - `T2_seed`
 - `Seed_diff`
 
-
-**Gráfica de ejemplo:** Aquí puedes insertar gráficas de tu análisis exploratorio, como la distribución de victorias por ranking de equipo.
-
-```markdown
-![Distribución de victorias por ranking](url_de_la_imagen)
-```
-
-Los datos sobre los que se ha entrenado tienen la siguiente estructura:
-
-
-Como puede observarse en la imagen los valores utilizados para hacer la prediccion son las estadisticas basicas (tiros por parido, ...) de los equipos para los distintos partidos
-
-## Métrica Utilizada
-
-Para evaluar los modelos de machine learning, hemos utilizado la log-loss (pérdida logarítmica) como métrica principal. Esta métrica es ideal para problemas de clasificación binaria en los que es importante no solo predecir el resultado correcto, sino también la confianza en la predicción. La elección de esta métrica se debe a su capacidad para penalizar las predicciones incorrectas que se hacen con alta confianza.
 
 
 ## Modelos de Machine Learning y Experimentación
@@ -337,15 +348,15 @@ Una vez entrenado el modelo, se evalúan las predicciones:
 
 - **Interpolación con Splines:** Para mejorar la calibración de las probabilidades predichas, se utiliza una interpolación de spline que ajusta una curva suave a las predicciones, permitiendo ajustes finos en base a la distribución de los resultados. Se realizan ajustes manuales para cuentas de enfrentamientos donde la historia y la lógica indican un resultado probable, como los enfrentamientos entre seeds altamente dispares.
 
-<img src="img/spline.png" alt="Grafica de out-of-fold predictions" title="Grafica de out-of-fold predictions" width="400" height="300">
-
-- **Entrenamiento final:**
 
 adjusted logloss of cvsplit 0: 0.5318912956329822
 
 adjusted logloss of cvsplit 1: 0.5316056931215835
 
 adjusted logloss of cvsplit 2: 0.5306631444768599
+
+
+La perdida logaritmica en cada temporada ha sido:
 
 | Season | Value     |
 |--------|-----------|
@@ -371,25 +382,23 @@ adjusted logloss of cvsplit 2: 0.5306631444768599
 | 2023   | 0.586124  |
 
 
-#### **Visualización y Predicción Final**
-- **Visualización de Desempeño:** Se proporcionan visualizaciones que comparan las probabilidades predichas con los resultados reales, ofreciendo una visión clara de cómo el modelo está interpretando y respondiendo a los datos.
-- **Predicción de Partidos:** El método `predict_matchup` utiliza el modelo y la interpolación de spline para predecir y devolver un resultado binario, indicando si el equipo 1 es el probable ganador del enfrentamiento.
+<img src="img/spline.png" alt="Grafica de out-of-fold predictions" title="Grafica de out-of-fold predictions" width="400" height="300">
 
+- **Entrenamiento final:**
 
+Para el entrenamiento final, se entrena con el conjunto entero de datos, con el numero de iteration_counts obtenido.
 
-
-
-**Simulacion March Madness 2024**
+#### **Simulacion March Madness 2024**
 
 **Resultados obtenidos**
 
-Imagen del bracket completado
+![Predicciones bracket XGBoost](img/NCAAxgb.jpg)
 
 Errors: 50
 
 Accuracy: 0.60
 
-Points: 
+Points: 540
 
 **Comparacion con profesionales**
 
@@ -399,80 +408,141 @@ Errors: 42
 
 Accuracy: 0.67
 
-Points: 
-
-Se ha probado con distintos hiperparametros, al final los mejores que se han obtenido son los que se encuentran en la descripcino de los hiperparametros anterior
-
-Los errores obtenidos son los siguientes
+Points: 800
 
 
+**Shae Cornette's**
 
+Errors: 54
+
+Accuracy: 0.57
+
+Points: 640
 
 ### Redes Neuronales
 
-Las redes neuronales fueron seleccionadas por su habilidad para modelar interacciones complejas entre variables. Implementamos una arquitectura de red profunda que se ajustó a través de diversas capas ocultas y técnicas de regularización como el Dropout para evitar el sobreajuste. La red fue entrenada para optimizar la función de pérdida logarítmica, proporcionando así estimaciones de probabilidad que facilitan la interpretación en contextos de apuestas y análisis deportivo.
+Las redes neuronales son especialmente adecuadas para modelar interacciones no lineales y complejas entre variables. Dado que los resultados de los partidos en torneos como el March Madness de la NCAA dependen de una serie de factores interrelacionados—tales como la forma del equipo, las estadísticas de jugadores, y más—, las redes neuronales pueden aprender y modelar estas relaciones dinámicas de manera más efectiva que los modelos tradicionales.
+
+#### **Inicialización y Configuración de Datos**
+
+Las features utilizadas son las mismas que en el modelo anterior, pero se han normalizado utilizando el StandardScaler para garantizar que la magnitud de las variables no afecte adversamente el rendimiento del modelo. 
+
+El target se cambia a binario, tal y como se ve en la siguiente tabla:
+
+| Index | Target |
+|-------|--------|
+| 0     | 1      |
+| 1     | 0      |
+| 2     | 0      |
+| 3     | 1      |
+| 4     | 1      |
 
 
-The features are normalized using StandardScaler
+#### **Configuración de parámetros del modelo**
 
-Training the Model:
+Para la función de pérdida, se emplea la entropía cruzada binaria (BCELoss), reconocida por su efectividad en problemas de clasificación binaria. El optimizador seleccionado es Adam, debido a su capacidad de ajustar la tasa de aprendizaje de manera eficiente, lo que es ideal para lograr una convergencia rápida y estable.
 
-Uses Binary Cross-Entropy Loss (BCELoss) for the loss function and Adam optimizer.
-Implements learning rate scheduling and early stopping based on validation loss to prevent overfitting.
-For each epoch, the code performs training and validation steps, calculating and printing loss and accuracy metrics.
+Además, se va a ir ajustando el learning rate, junto con un mecanismo de early-stopping basado en la pérdida de validación. Este enfoque ayuda a prevenir el sobreajuste y asegura que el modelo generalice bien en datos no vistos.
 
-#### **Training Parameters**
+Durante cada epoch del entrenamiento, se ejecutan ciclos de entrenamiento y validación. En estos ciclos, se calculan e informan las métricas de pérdida y precisión, proporcionando visibilidad continua del rendimiento del modelo y permitiendo ajustes oportunos en los parámetros si es necesario.
+
 
 - **Batch Size:** 32
 - **Number of Epochs:** 20
 - **Learning Rate:** 0.001
 - **Weight Decay:** 0.03
-- **Patience for Early Stopping:** 3
+- **Early Stopping:** 3
 - **Scheduler Step Size:** 10
 - **Scheduler Gamma:** 0.1
 
-#### **Neural Network Structure**
 
-A simple sequential model with two hidden layers. The network includes ReLU activation functions and dropout layers to prevent overfitting, followed by a sigmoid output layer for binary classification.
+#### **Estructura de la red neuronal**
+
+Un modelo secuencial simple con dos capas ocultas. La red incluye funciones de activación ReLU y capas de dropout para prevenir el sobreajuste, seguidas por una capa de salida sigmoidal para la clasificación binaria.
 
 - **Sequential Model:**
   - **Layer 1:** Linear
     - **Input Features:** 57
-    - **Output Features:** 16
+    - **Output Features:** 32
     - **Bias:** True
   - **Layer 2:** ReLU
   - **Layer 3:** Dropout
     - **Probability:** 0.6
     - **Inplace:** False
   - **Layer 4:** Linear
-    - **Input Features:** 16
-    - **Output Features:** 8
+    - **Input Features:** 32
+    - **Output Features:** 16
     - **Bias:** True
   - **Layer 5:** ReLU
   - **Layer 6:** Dropout
     - **Probability:** 0.6
     - **Inplace:** False
   - **Layer 7:** Linear
-    - **Input Features:** 8
+    - **Input Features:** 16
     - **Output Features:** 1
     - **Bias:** True
   - **Layer 8:** Sigmoid
 
 
-#### **Resultados de experimentacion**
+Se ha probado a cambiar la estructura de la red añadiendo mas capas o haciendo las capas existentes mas grandes, pero se producia underfitting.
 
-After training, it plots training and validation loss and accuracy to visualize the model's performance over epochs.
-Tras el entrenamiento, traza las pérdidas y la precisión del entrenamiento y la validación para visualizar el rendimiento del modelo a lo largo de las épocas.
+
+#### **Entrenamiento y Evaluación del Modelo**
+
+
+Tras el entrenamiento, se traza las pérdidas y la precisión del entrenamiento y la validación para visualizar el rendimiento del modelo a lo largo de las epochs.
 
 ![Train and validation loss and accuracy](img/train_val_loss_acc.png "Train and validation loss and accuracy")
 
 
-**Resultados de experimentación**: Aquí, puedes detallar los resultados de tus experimentos, incluyendo métricas de rendimiento como la precisión, recall, y especialmente la log-loss para cada modelo.
+#### **Simulacion March Madness 2024**
+
+
+**Resultados obtenidos**
+
+![Predicciones bracket Red Neuronal](img/NCAAnn.jpg)
+
+Errors: 50
+
+Accuracy: 0.60
+
+Points: 650
+
+**Comparacion con profesionales**
+
+**Stephen A'Smith**
+
+Errors: 42
+
+Accuracy: 0.67
+
+Points: 800
+
+
+**Shae Cornette's**
+
+Errors: 54
+
+Accuracy: 0.57
+
+Points: 640
+
 
 ## Modelo de Machine Learning Seleccionado
 
-El modelo finalmente seleccionado fue una red neuronal profunda. Este modelo ofreció el mejor equilibrio entre precisión y log-loss, indicando no solo una alta tasa de predicciones correctas sino también confianza en esas predicciones. La capacidad de la red neuronal para capturar interacciones complejas entre características fue crucial para su desempeño superior.
+
+La decisión de optar por redes neuronales en lugar de XGBoost como modelo final se basa en varios factores clave. Principalmente, el uso de redes neuronales ha demostrado proporcionar mejores resultados en la simulación del bracket de 2024. 
+
+Además, mi familiarización con las redes neuronales influyó significativamente en la elección del modelo. Esto ha permitido una implementación más eficiente y un ajuste más afinado de los parámetros.
+
+Es importante mencionar que, a pesar de que el ganador de la competición de Kaggle en 2023 utilizó XGBoost para alcanzar el primer lugar, los resultados obtenidos con las redes neuronales en el torneo de 2024 han reafirmado mi decisión.
 
 ## Conclusiones
 
-El proyecto demostró la eficacia de las redes neuronales en la predicción de resultados deportivos, destacando la importancia de una métrica adecuada y un análisis exploratorio profundo. Futuras investigaciones podrían explorar la incorporación de datos en tiempo real y el análisis de sentimientos para mejorar aún más las predicciones.
+
+El proyecto ha demostrado la eficacia de las redes neuronales en la predicción de resultados deportivos, especialmente en un evento tan impredecible como el torneo de March Madness. A través de un análisis exploratorio profundo y la selección de una métrica adecuada, hemos logrado subrayar la importancia de ajustar meticulosamente el modelo para manejar la complejidad inherente a este tipo de predicciones.
+
+La dificultad de predecir los resultados de partidos en el March Madness, conocido por su naturaleza impredecible, ha sido un desafío significativo. Aunque la precisión del modelo alcanzó un 0.6, es crucial reconocer que la tarea de predecir correctamente los partidos no implica una probabilidad del 50%. Los aciertos en las rondas posteriores dependen de las predicciones correctas en las etapas iniciales, lo que complica aún más el proceso.
+
+Durante el proyecto, se logró superar las predicciones de algunos analistas, aunque también se obtuvieron resultados inferiores en comparación con otros. A pesar de estos resultados mixtos, estoy satisfecho con los avances realizados y me siento motivado para continuar mejorando. Utilizando este proyecto como base, planeo participar en la próxima competición de March Machine Learning Mania 2025.
+
