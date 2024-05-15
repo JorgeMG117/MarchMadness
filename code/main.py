@@ -1,9 +1,7 @@
 from neural_network import NNPredictor
-from dataset import NCAADataset
 from xgb import XGBPredictor
-from evaluate import evaluate
+from dataset import NCAADataset
 from evaluate import compare_bracket
-import numpy as np
 import pandas as pd
 
 
@@ -143,6 +141,8 @@ def main():
     #nn = NNPredictor(dataset.tournament_data)
 
     #nn.train_model()
+
+    #print(nn.model)
     
 
 

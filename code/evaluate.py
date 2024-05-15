@@ -1,7 +1,4 @@
-from sklearn.metrics import accuracy_score
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, root_mean_squared_error
-from sklearn.metrics import precision_score
 import numpy as np
 
 
@@ -30,15 +27,9 @@ def evaluate(results):
                              results['Wins'])
 
     accuracy = results['Accuracy'].sum() / num_games
-    #accuracy = (num_games - errors) / num_games
 
-    # 3 3 -> 3 - 3 = 0 -> 3 + 0 = 3 -> 3 * 2
-    # 2 3 -> 2 - 3 = -1 -> 3 + -1 = 2 -> 2 * 2
-    # 4 3 -> 4 - 3 = 1 -> 3 + 1 = 4 ERROR deberia ser 3
-
-    results['Points'] = np.where(results['Diff'] <= 0,
-                             (results['Wins'] + results['Diff']) * 2, 
-                             (results['Wins'] - results['Diff']) * 2)
+    results['Points'] = results['Accuracy'].apply(lambda x: 10 * 2 ** (x - 1) if x != 0 else 0)
+    
     points = results['Points'].sum()
     
     return accuracy, points
@@ -58,7 +49,7 @@ def compare_bracket(predictions):
     print(f"Points: {points}")
 
     # Compare against analyst
-    pro_pred = ['predictions/stephen_a.csv']
+    pro_pred = ['predictions/stephen_a.csv', 'predictions/shae_cornette.csv']
     for pred_file in pro_pred:
         pro_pred_df = pd.read_csv(pred_file)
         pro_pred_df.rename(columns={'Wins': 'PredictedWins'}, inplace=True)

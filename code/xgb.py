@@ -12,8 +12,9 @@ class XGBPredictor:
         self.data = data
         self.y = data['T1_Score'] - data['T2_Score']
         #y = np.where(y > 0, 1, 0)
-        #print(y.head())
-        #print(y.shape)
+        print("Target: ")
+        print(self.y.head())
+        print(self.y.shape)
 
         self.X = data[data.columns[6:]]
         print("Features: ")

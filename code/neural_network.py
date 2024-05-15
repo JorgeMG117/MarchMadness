@@ -1,5 +1,3 @@
-import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import torch
@@ -17,16 +15,18 @@ class NNPredictor(nn.Module):
 
         self.train_loader, self.test_loader = self._load_and_prepare_data(data)
 
+        print(self.train_loader.dataset.tensors[0].shape[1])
+
         ### Neural Network
         super(NNPredictor, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(self.train_loader.dataset.tensors[0].shape[1], 16),
+            nn.Linear(self.train_loader.dataset.tensors[0].shape[1], 32),#64, 512
             nn.ReLU(),
             nn.Dropout(0.6),
-            nn.Linear(16, 8),
+            nn.Linear(32, 16),
             nn.ReLU(),
             nn.Dropout(0.6),
-            nn.Linear(8, 1),
+            nn.Linear(16, 1),
             nn.Sigmoid()
         )
 
@@ -34,6 +34,15 @@ class NNPredictor(nn.Module):
     def _load_and_prepare_data(self, data):
         y = (data['T1_Score'] > data['T2_Score']).astype(int)
         X = data[data.columns[6:]]
+
+
+        #print("Target: ")
+        #print(y.head())
+        #print("Shape of y: " + str(y.shape))
+
+        #print("Features: ")
+        #print(X.head())
+        #print("Shape of X: " + str(X.shape))
 
         # Split the data
         X_train, X_test, y_train, y_test = train_test_split(X.values, y.values, test_size=0.2, random_state=42)
@@ -191,7 +200,7 @@ class NNPredictor(nn.Module):
         Returns:
         bool: Predicts Team1 wins the game.
         """
-        
+        #print(matchup.shape)
         # Extract features and apply the same preprocessing as training data
         features = self.scaler.transform(matchup.values)  # Apply scaling
 
